@@ -3508,6 +3508,299 @@ textarea {
   font-size: 0.8rem;
 }
 
+/* Task Analytics Panel */
+.panel-analytics {
+  min-height: auto;
+}
+
+.analytics-content {
+  padding: 0 4px;
+}
+
+.analytics-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.analytics-stat {
+  text-align: center;
+  padding: 12px 8px;
+  background: var(--bg-alt);
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+}
+
+.analytics-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent-green);
+}
+
+.analytics-stat-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.analytics-expanded {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.analytics-expanded.hidden {
+  display: none;
+}
+
+.analytics-section {
+  margin-bottom: 16px;
+}
+
+.analytics-section h4 {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 8px;
+}
+
+.priority-distribution,
+.category-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.distribution-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+}
+
+.distribution-bar-label {
+  width: 120px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.distribution-bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-alt);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.distribution-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.distribution-bar-value {
+  width: 40px;
+  text-align: right;
+  color: var(--text-muted);
+}
+
+.weekly-progress {
+  display: flex;
+  gap: 4px;
+  justify-content: space-between;
+}
+
+.weekly-progress-day {
+  flex: 1;
+  text-align: center;
+}
+
+.weekly-progress-bar {
+  height: 40px;
+  background: var(--bg-alt);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column-reverse;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.weekly-progress-fill {
+  background: var(--accent-green);
+  transition: height 0.3s ease;
+}
+
+.weekly-progress-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.productivity-score {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.score-ring {
+  width: 60px;
+  height: 60px;
+  position: relative;
+}
+
+.score-ring-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.score-ring-bg {
+  fill: none;
+  stroke: var(--bg-alt);
+  stroke-width: 3;
+}
+
+.score-ring-fill {
+  fill: none;
+  stroke: var(--accent-green);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.5s ease;
+}
+
+.score-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent-green);
+}
+
+.score-label {
+  font-size: 0.85rem;
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+/* Data Management Styles */
+.data-export-options,
+.data-import-options,
+.data-clear-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.data-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 16px;
+  background: var(--bg-alt);
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+}
+
+.data-summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.data-summary-label {
+  color: var(--text-muted);
+}
+
+.data-summary-value {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.import-status {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  display: none;
+}
+
+.import-status.success {
+  display: block;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #16a34a;
+}
+
+.import-status.error {
+  display: block;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #dc2626;
+}
+
+/* Focus Mode Panel */
+.focus-start-panel {
+  background: linear-gradient(135deg, var(--accent-green-soft) 0%, rgba(255,255,255,0.9) 100%);
+  border: 1px solid var(--accent-green);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.focus-start-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--accent-green-dark);
+}
+
+.focus-duration-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.focus-duration-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--accent-green);
+  background: white;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.focus-duration-btn:hover {
+  background: var(--accent-green);
+  color: white;
+}
+
+/* Recurring Task Badge */
+.task-recurring-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 4px;
+  font-size: 0.65rem;
+  color: #7c3aed;
+  font-weight: 500;
+}
+
+.task-recurring-badge svg {
+  width: 10px;
+  height: 10px;
+}
+
 /* Print styles */
 @media print {
   .app-header,

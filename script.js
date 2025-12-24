@@ -1415,6 +1415,8 @@ function initDashboard() {
   initPomodoroTimer();
   initEisenhowerMatrix();
   initHabitNotifications();
+  initAnalytics();
+  initDataManagement();
   restoreFromState();
 }
 
@@ -5787,6 +5789,513 @@ async function analyzeReflection(content, type) {
     console.error("Error analyzing reflection:", err);
     return "Analysis pending.";
   }
+}
+
+// ---------- Task Analytics ----------
+
+function initAnalytics() {
+  const toggleBtn = $("#toggleAnalyticsBtn");
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", () => {
+      const expanded = $("#analyticsExpanded");
+      if (expanded) {
+        const isHidden = expanded.classList.contains("hidden");
+        expanded.classList.toggle("hidden", !isHidden);
+        toggleBtn.textContent = isHidden ? "Collapse" : "Expand";
+      }
+    });
+  }
+  renderAnalytics();
+}
+
+function renderAnalytics() {
+  const tasks = state.tasks || [];
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter(t => t.completed).length;
+  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  
+  // Update summary stats
+  const statTotal = $("#statTotalTasks");
+  const statCompleted = $("#statCompletedTasks");
+  const statRate = $("#statCompletionRate");
+  
+  if (statTotal) statTotal.textContent = totalTasks;
+  if (statCompleted) statCompleted.textContent = completedTasks;
+  if (statRate) statRate.textContent = `${completionRate}%`;
+  
+  // Priority distribution
+  renderPriorityDistribution(tasks);
+  
+  // Category breakdown
+  renderCategoryBreakdown(tasks);
+  
+  // Weekly progress
+  renderWeeklyProgress(tasks);
+  
+  // Productivity score
+  renderProductivityScore(tasks, completionRate);
+}
+
+function renderPriorityDistribution(tasks) {
+  const container = $("#priorityDistribution");
+  if (!container) return;
+  
+  const priorities = [
+    { key: "Urgent & Important", color: "#ef4444" },
+    { key: "Important, Not Urgent", color: "#3b82f6" },
+    { key: "Urgent, Not Important", color: "#f59e0b" },
+    { key: "Not Urgent & Not Important", color: "#6b7280" },
+  ];
+  
+  const total = tasks.length || 1;
+  
+  container.innerHTML = priorities.map(p => {
+    const count = tasks.filter(t => t.task_priority === p.key).length;
+    const percent = Math.round((count / total) * 100);
+    return `
+      <div class="distribution-bar">
+        <span class="distribution-bar-label">${p.key.split(",")[0]}</span>
+        <div class="distribution-bar-track">
+          <div class="distribution-bar-fill" style="width: ${percent}%; background: ${p.color};"></div>
+        </div>
+        <span class="distribution-bar-value">${count}</span>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderCategoryBreakdown(tasks) {
+  const container = $("#categoryBreakdown");
+  if (!container) return;
+  
+  const categories = {};
+  tasks.forEach(t => {
+    const cat = t.task_category || "study";
+    categories[cat] = (categories[cat] || 0) + 1;
+  });
+  
+  const total = tasks.length || 1;
+  const colors = {
+    study: "#c8103c",
+    project: "#a10d32",
+    chores: "#c8103c",
+    personal: "#9ca3af",
+    social: "#6b7280",
+  };
+  
+  container.innerHTML = Object.entries(categories).map(([cat, count]) => {
+    const percent = Math.round((count / total) * 100);
+    const color = colors[cat] || "#9ca3af";
+    return `
+      <div class="distribution-bar">
+        <span class="distribution-bar-label">${cat.charAt(0).toUpperCase() + cat.slice(1)}</span>
+        <div class="distribution-bar-track">
+          <div class="distribution-bar-fill" style="width: ${percent}%; background: ${color};"></div>
+        </div>
+        <span class="distribution-bar-value">${count}</span>
+      </div>
+    `;
+  }).join("") || '<p style="font-size: 0.75rem; color: var(--text-muted);">No tasks yet</p>';
+}
+
+function renderWeeklyProgress(tasks) {
+  const container = $("#weeklyProgress");
+  if (!container) return;
+  
+  const today = new Date();
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const days = [];
+  
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    days.push(d);
+  }
+  
+  const maxCompleted = Math.max(1, ...days.map(d => {
+    const dateStr = d.toISOString().slice(0, 10);
+    return tasks.filter(t => t.completed && t.task_deadline === dateStr).length;
+  }));
+  
+  container.innerHTML = days.map(d => {
+    const dateStr = d.toISOString().slice(0, 10);
+    const completed = tasks.filter(t => t.completed && t.task_deadline === dateStr).length;
+    const percent = (completed / maxCompleted) * 100;
+    const dayName = dayNames[d.getDay()];
+    const isToday = d.toDateString() === today.toDateString();
+    
+    return `
+      <div class="weekly-progress-day">
+        <div class="weekly-progress-bar">
+          <div class="weekly-progress-fill" style="height: ${percent}%;"></div>
+        </div>
+        <span class="weekly-progress-label" style="${isToday ? 'font-weight: 700;' : ''}">${dayName}</span>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderProductivityScore(tasks, completionRate) {
+  const scoreRingFill = $("#scoreRingFill");
+  const scoreValue = $("#scoreValue");
+  const scoreLabel = $("#scoreLabel");
+  
+  if (!scoreRingFill || !scoreValue || !scoreLabel) return;
+  
+  // Calculate productivity score based on:
+  // - Completion rate (40%)
+  // - Priority balance (30%) - not all tasks are urgent/important
+  // - Task count (30%) - more tasks managed = higher score
+  
+  let score = 0;
+  
+  // Completion rate component
+  score += completionRate * 0.4;
+  
+  // Priority balance
+  const urgentImportant = tasks.filter(t => t.task_priority === "Urgent & Important").length;
+  const total = tasks.length || 1;
+  const urgentRatio = urgentImportant / total;
+  const balanceScore = urgentRatio < 0.5 ? 100 : (1 - urgentRatio) * 200;
+  score += balanceScore * 0.3;
+  
+  // Task count
+  const taskCountScore = Math.min(100, tasks.length * 10);
+  score += taskCountScore * 0.3;
+  
+  score = Math.round(Math.min(100, Math.max(0, score)));
+  
+  scoreRingFill.setAttribute("stroke-dasharray", `${score}, 100`);
+  scoreValue.textContent = score;
+  
+  if (score >= 80) scoreLabel.textContent = "Excellent! 🌟";
+  else if (score >= 60) scoreLabel.textContent = "Great Progress!";
+  else if (score >= 40) scoreLabel.textContent = "Keep Going!";
+  else if (score >= 20) scoreLabel.textContent = "Building Momentum";
+  else scoreLabel.textContent = "Getting Started";
+}
+
+// ---------- Import/Export Functions ----------
+
+function initDataManagement() {
+  // Export all data
+  const exportAllBtn = $("#exportAllDataBtn");
+  if (exportAllBtn) {
+    exportAllBtn.addEventListener("click", exportAllData);
+  }
+  
+  // Export tasks CSV
+  const exportCSVBtn = $("#exportTasksCSVBtn");
+  if (exportCSVBtn) {
+    exportCSVBtn.addEventListener("click", exportTasksCSV);
+  }
+  
+  // Import data
+  const importBtn = $("#importDataBtn");
+  const importFile = $("#importDataFile");
+  if (importBtn && importFile) {
+    importBtn.addEventListener("click", () => importFile.click());
+    importFile.addEventListener("change", handleImportData);
+  }
+  
+  // Clear data buttons
+  const clearCompletedBtn = $("#clearCompletedTasksBtn");
+  if (clearCompletedBtn) {
+    clearCompletedBtn.addEventListener("click", () => clearData("completed"));
+  }
+  
+  const clearAllTasksBtn = $("#clearAllTasksBtn");
+  if (clearAllTasksBtn) {
+    clearAllTasksBtn.addEventListener("click", () => clearData("tasks"));
+  }
+  
+  const clearScheduleBtn = $("#clearScheduleBtn");
+  if (clearScheduleBtn) {
+    clearScheduleBtn.addEventListener("click", () => clearData("schedule"));
+  }
+  
+  // Add common blocking rules
+  const addCommonRulesBtn = $("#addCommonRulesBtn");
+  if (addCommonRulesBtn) {
+    addCommonRulesBtn.addEventListener("click", addCommonBlockingRules);
+  }
+  
+  updateDataSummary();
+}
+
+function exportAllData() {
+  const data = {
+    exportDate: new Date().toISOString(),
+    version: "1.0",
+    profile: state.profile,
+    tasks: state.tasks,
+    goals: state.goals,
+    dailyHabits: state.dailyHabits,
+    reflections: state.reflections,
+    blockingRules: state.blockingRules,
+    schedule: state.schedule,
+    fixedBlocks: state.fixedBlocks,
+  };
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `axis-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  showToast("Data exported successfully!");
+}
+
+function exportTasksCSV() {
+  const tasks = state.tasks || [];
+  if (tasks.length === 0) {
+    alert("No tasks to export.");
+    return;
+  }
+  
+  const headers = ["Name", "Priority", "Category", "Deadline", "Time", "Duration (hrs)", "Completed", "Recurring"];
+  const rows = tasks.map(t => [
+    `"${(t.task_name || "").replace(/"/g, '""')}"`,
+    t.task_priority || "",
+    t.task_category || "",
+    t.task_deadline || "",
+    t.task_deadline_time || "",
+    t.task_duration_hours || "",
+    t.completed ? "Yes" : "No",
+    t.recurrence || "None",
+  ]);
+  
+  const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `axis-tasks-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  showToast("Tasks exported as CSV!");
+}
+
+async function handleImportData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const statusEl = $("#importStatus");
+  
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    
+    if (!data.version || !data.exportDate) {
+      throw new Error("Invalid backup file format");
+    }
+    
+    const confirmed = confirm(
+      `Import data from ${new Date(data.exportDate).toLocaleDateString()}?\n\n` +
+      `This will merge:\n` +
+      `• ${(data.tasks || []).length} tasks\n` +
+      `• ${(data.goals || []).length} goals\n` +
+      `• ${(data.dailyHabits || []).length} habits\n` +
+      `• ${(data.reflections || []).length} reflections\n\n` +
+      `Existing data will be preserved.`
+    );
+    
+    if (!confirmed) {
+      e.target.value = "";
+      return;
+    }
+    
+    // Merge data (avoid duplicates by ID)
+    if (data.tasks) {
+      const existingIds = new Set((state.tasks || []).map(t => t.id));
+      const newTasks = data.tasks.filter(t => !existingIds.has(t.id));
+      state.tasks = [...(state.tasks || []), ...newTasks];
+    }
+    
+    if (data.goals) {
+      const existingIds = new Set((state.goals || []).map(g => g.id));
+      const newGoals = data.goals.filter(g => !existingIds.has(g.id));
+      state.goals = [...(state.goals || []), ...newGoals];
+    }
+    
+    if (data.dailyHabits) {
+      const existingIds = new Set((state.dailyHabits || []).map(h => h.id));
+      const newHabits = data.dailyHabits.filter(h => !existingIds.has(h.id));
+      state.dailyHabits = [...(state.dailyHabits || []), ...newHabits];
+    }
+    
+    if (data.reflections) {
+      const existingIds = new Set((state.reflections || []).map(r => r.id));
+      const newReflections = data.reflections.filter(r => !existingIds.has(r.id));
+      state.reflections = [...(state.reflections || []), ...newReflections];
+    }
+    
+    if (data.blockingRules) {
+      const existingIds = new Set((state.blockingRules || []).map(r => r.id));
+      const newRules = data.blockingRules.filter(r => !existingIds.has(r.id));
+      state.blockingRules = [...(state.blockingRules || []), ...newRules];
+    }
+    
+    await saveUserData();
+    
+    if (statusEl) {
+      statusEl.textContent = "✓ Data imported successfully!";
+      statusEl.className = "import-status success";
+    }
+    
+    // Refresh UI
+    renderTasks();
+    renderGoals();
+    renderDailyHabits();
+    renderAnalytics();
+    updateDataSummary();
+    regenerateScheduleAndRender();
+    
+    showToast("Data imported successfully!");
+  } catch (err) {
+    console.error("Import error:", err);
+    if (statusEl) {
+      statusEl.textContent = `✗ Import failed: ${err.message}`;
+      statusEl.className = "import-status error";
+    }
+  }
+  
+  e.target.value = "";
+}
+
+function clearData(type) {
+  let message = "";
+  switch (type) {
+    case "completed":
+      message = "Clear all completed tasks? This cannot be undone.";
+      break;
+    case "tasks":
+      message = "Clear ALL tasks? This cannot be undone.";
+      break;
+    case "schedule":
+      message = "Clear the current schedule? Tasks will remain but need to be rescheduled.";
+      break;
+  }
+  
+  if (!confirm(message)) return;
+  
+  switch (type) {
+    case "completed":
+      state.tasks = (state.tasks || []).filter(t => !t.completed);
+      break;
+    case "tasks":
+      state.tasks = [];
+      state.rankedTasks = [];
+      state.schedule = [];
+      break;
+    case "schedule":
+      state.schedule = [];
+      state.fixedBlocks = [];
+      break;
+  }
+  
+  saveUserData();
+  renderTasks();
+  renderAnalytics();
+  renderSchedule();
+  updateDataSummary();
+  showToast("Data cleared.");
+}
+
+function updateDataSummary() {
+  const summaryTotal = $("#summaryTotalTasks");
+  const summaryCompleted = $("#summaryCompletedTasks");
+  const summaryGoals = $("#summaryGoals");
+  const summaryHabits = $("#summaryHabits");
+  const summaryReflections = $("#summaryReflections");
+  const summaryBlockingRules = $("#summaryBlockingRules");
+  
+  if (summaryTotal) summaryTotal.textContent = (state.tasks || []).length;
+  if (summaryCompleted) summaryCompleted.textContent = (state.tasks || []).filter(t => t.completed).length;
+  if (summaryGoals) summaryGoals.textContent = (state.goals || []).length;
+  if (summaryHabits) summaryHabits.textContent = (state.dailyHabits || []).length;
+  if (summaryReflections) summaryReflections.textContent = (state.reflections || []).length;
+  if (summaryBlockingRules) summaryBlockingRules.textContent = (state.blockingRules || []).length;
+}
+
+function addCommonBlockingRules() {
+  const commonSites = [
+    { domain: "youtube.com", action: "block" },
+    { domain: "twitter.com", action: "block" },
+    { domain: "x.com", action: "block" },
+    { domain: "facebook.com", action: "block" },
+    { domain: "instagram.com", action: "block" },
+    { domain: "tiktok.com", action: "block" },
+    { domain: "reddit.com", action: "block" },
+    { domain: "netflix.com", action: "block" },
+  ];
+  
+  if (!state.blockingRules) state.blockingRules = [];
+  
+  const existingDomains = new Set(state.blockingRules.map(r => r.domain));
+  let added = 0;
+  
+  commonSites.forEach(site => {
+    if (!existingDomains.has(site.domain)) {
+      state.blockingRules.push({
+        id: `rule_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        domain: site.domain,
+        action: site.action,
+        redirectUrl: "",
+      });
+      added++;
+    }
+  });
+  
+  saveUserData();
+  renderBlockingRules();
+  showToast(`Added ${added} common blocking rules.`);
+}
+
+// ---------- Recurring Tasks ----------
+
+function handleRecurringTask(task) {
+  if (!task.recurrence || task.recurrence === "") return;
+  
+  // Calculate next occurrence
+  const currentDeadline = new Date(task.task_deadline);
+  let nextDeadline = new Date(currentDeadline);
+  
+  switch (task.recurrence) {
+    case "daily":
+      nextDeadline.setDate(nextDeadline.getDate() + 1);
+      break;
+    case "weekdays":
+      do {
+        nextDeadline.setDate(nextDeadline.getDate() + 1);
+      } while (nextDeadline.getDay() === 0 || nextDeadline.getDay() === 6);
+      break;
+    case "weekly":
+      nextDeadline.setDate(nextDeadline.getDate() + 7);
+      break;
+    case "biweekly":
+      nextDeadline.setDate(nextDeadline.getDate() + 14);
+      break;
+    case "monthly":
+      nextDeadline.setMonth(nextDeadline.getMonth() + 1);
+      break;
+  }
+  
+  // Create the new recurring task
+  const newTask = {
+    ...task,
+    id: `task_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+    task_deadline: nextDeadline.toISOString().slice(0, 10),
+    completed: false,
+  };
+  
+  state.tasks.push(newTask);
+  saveUserData();
+  
+  showToast(`Recurring task "${task.task_name}" scheduled for ${nextDeadline.toLocaleDateString()}`);
 }
 
 function restoreFromState() {

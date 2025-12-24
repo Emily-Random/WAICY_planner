@@ -59,6 +59,62 @@
         </section>
 
         <!-- To-Do List -->
+        <!-- Task Analytics Panel -->
+        <section class="panel panel-analytics">
+          <div class="panel-header">
+            <div class="panel-header-row">
+              <div>
+                <h2>📊 Task Analytics</h2>
+                <span class="panel-subtitle">Your productivity insights</span>
+              </div>
+              <button type="button" id="toggleAnalyticsBtn" class="btn btn-ghost btn-sm">Expand</button>
+            </div>
+          </div>
+          <div id="analyticsContent" class="analytics-content">
+            <div class="analytics-summary">
+              <div class="analytics-stat">
+                <div class="analytics-stat-value" id="statTotalTasks">0</div>
+                <div class="analytics-stat-label">Total Tasks</div>
+              </div>
+              <div class="analytics-stat">
+                <div class="analytics-stat-value" id="statCompletedTasks">0</div>
+                <div class="analytics-stat-label">Completed</div>
+              </div>
+              <div class="analytics-stat">
+                <div class="analytics-stat-value" id="statCompletionRate">0%</div>
+                <div class="analytics-stat-label">Completion Rate</div>
+              </div>
+            </div>
+            <div id="analyticsExpanded" class="analytics-expanded hidden">
+              <div class="analytics-section">
+                <h4>Priority Distribution</h4>
+                <div id="priorityDistribution" class="priority-distribution"></div>
+              </div>
+              <div class="analytics-section">
+                <h4>Category Breakdown</h4>
+                <div id="categoryBreakdown" class="category-breakdown"></div>
+              </div>
+              <div class="analytics-section">
+                <h4>This Week's Progress</h4>
+                <div id="weeklyProgress" class="weekly-progress"></div>
+              </div>
+              <div class="analytics-section">
+                <h4>Productivity Score</h4>
+                <div id="productivityScore" class="productivity-score">
+                  <div class="score-ring">
+                    <svg viewBox="0 0 36 36" class="score-ring-svg">
+                      <path class="score-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                      <path id="scoreRingFill" class="score-ring-fill" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                    </svg>
+                    <div class="score-value" id="scoreValue">0</div>
+                  </div>
+                  <div class="score-label" id="scoreLabel">Getting Started</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section class="panel panel-tasks">
           <div class="panel-header">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
@@ -473,6 +529,7 @@
             <button class="settings-tab" data-tab="goals">Goals</button>
             <button class="settings-tab" data-tab="blocking">Focus & Blocking</button>
             <button class="settings-tab" data-tab="reflections">Reflections</button>
+            <button class="settings-tab" data-tab="data">Data</button>
           </div>
           
           <!-- Profile Settings -->
@@ -581,6 +638,92 @@
               </button>
             </div>
           </div>
+
+          <!-- Data Management Settings -->
+          <div id="settingsData" class="settings-section">
+            <h3>📥 Export Data</h3>
+            <p class="settings-description">
+              Download all your data including tasks, goals, habits, schedule, and profile settings.
+            </p>
+            <div class="data-export-options">
+              <button type="button" class="btn btn-primary" id="exportAllDataBtn">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                  <path d="M8 2v8m0 0L5 7m3 3l3-3"/>
+                  <path d="M2 14h12"/>
+                </svg>
+                Export All Data (JSON)
+              </button>
+              <button type="button" class="btn btn-secondary" id="exportTasksCSVBtn">
+                Export Tasks (CSV)
+              </button>
+            </div>
+            
+            <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border-subtle);">
+            
+            <h3>📤 Import Data</h3>
+            <p class="settings-description">
+              Import data from a previously exported JSON file. This will merge with your existing data.
+            </p>
+            <div class="data-import-options">
+              <input type="file" id="importDataFile" accept=".json" style="display: none;" />
+              <button type="button" class="btn btn-secondary" id="importDataBtn">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                  <path d="M8 10V2m0 0L5 5m3-3l3 3"/>
+                  <path d="M2 14h12"/>
+                </svg>
+                Import Data (JSON)
+              </button>
+              <div id="importStatus" class="import-status"></div>
+            </div>
+            
+            <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border-subtle);">
+            
+            <h3>📊 Data Summary</h3>
+            <div id="dataSummary" class="data-summary">
+              <div class="data-summary-item">
+                <span class="data-summary-label">Total Tasks:</span>
+                <span class="data-summary-value" id="summaryTotalTasks">0</span>
+              </div>
+              <div class="data-summary-item">
+                <span class="data-summary-label">Completed Tasks:</span>
+                <span class="data-summary-value" id="summaryCompletedTasks">0</span>
+              </div>
+              <div class="data-summary-item">
+                <span class="data-summary-label">Goals:</span>
+                <span class="data-summary-value" id="summaryGoals">0</span>
+              </div>
+              <div class="data-summary-item">
+                <span class="data-summary-label">Daily Habits:</span>
+                <span class="data-summary-value" id="summaryHabits">0</span>
+              </div>
+              <div class="data-summary-item">
+                <span class="data-summary-label">Reflections:</span>
+                <span class="data-summary-value" id="summaryReflections">0</span>
+              </div>
+              <div class="data-summary-item">
+                <span class="data-summary-label">Blocking Rules:</span>
+                <span class="data-summary-value" id="summaryBlockingRules">0</span>
+              </div>
+            </div>
+            
+            <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border-subtle);">
+            
+            <h3 style="color: #dc2626;">🗑️ Clear Data</h3>
+            <p class="settings-description" style="color: #991b1b;">
+              Clear specific data categories. This cannot be undone.
+            </p>
+            <div class="data-clear-options">
+              <button type="button" class="btn btn-ghost" id="clearCompletedTasksBtn" style="color: #dc2626; border-color: #dc2626;">
+                Clear Completed Tasks
+              </button>
+              <button type="button" class="btn btn-ghost" id="clearAllTasksBtn" style="color: #dc2626; border-color: #dc2626;">
+                Clear All Tasks
+              </button>
+              <button type="button" class="btn btn-ghost" id="clearScheduleBtn" style="color: #dc2626; border-color: #dc2626;">
+                Clear Schedule
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -657,6 +800,19 @@
                   <span>Requires computer?</span>
                 </label>
               </div>
+            </div>
+
+            <div class="form-group">
+              <label for="taskEditor_recurrence">Repeat this task</label>
+              <select id="taskEditor_recurrence">
+                <option value="">No repeat (one-time task)</option>
+                <option value="daily">Daily</option>
+                <option value="weekdays">Weekdays (Mon-Fri)</option>
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Every 2 weeks</option>
+                <option value="monthly">Monthly</option>
+              </select>
+              <small class="form-hint">Recurring tasks will auto-regenerate after completion</small>
             </div>
 
             <input type="hidden" id="taskEditor_priority" />
