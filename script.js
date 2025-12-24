@@ -33,6 +33,99 @@ let state = {
   firstReflectionDueDate: null, // ISO date string for when first weekly reflection is due (7 days after signup)
 };
 
+// ------------------------------
+// Data model normalization layer
+// ------------------------------
+// Over time, this project accumulated multiple task shapes:
+// - canonical UI tasks: { task_name, task_priority, task_category, task_deadline, task_deadline_time, task_duration_hours }
+// - daily-goal generated tasks (older): { name, priority, category, deadline, estimatedHours }
+// A professional app should be strict about its data model.
+// The functions below migrate/normalize tasks into the canonical shape.
+
+function normalizeTaskPriority(value) {
+  if (!value) return "";
+  const v = String(value).trim();
+  // Canonical values
+  const allowed = new Set([
+    "Urgent & Important",
+    "Urgent, Not Important",
+    "Important, Not Urgent",
+    "Not Urgent & Not Important",
+  ]);
+  if (allowed.has(v)) return v;
+
+  // Legacy / shorthand mappings
+  const legacy = {
+    "urgent-important": "Urgent & Important",
+    "urgent-not-important": "Urgent, Not Important",
+    "important-not-urgent": "Important, Not Urgent",
+    "not-urgent-not-important": "Not Urgent & Not Important",
+  };
+  const key = v.toLowerCase().replace(/[^a-z]+/g, "-");
+  return legacy[key] || "";
+}
+
+function normalizeTaskCategory(value) {
+  if (!value) return "study";
+  return String(value).trim().toLowerCase();
+}
+
+function normalizeTask(raw) {
+  if (!raw || typeof raw !== "object") return null;
+
+  // If already canonical-ish
+  const task_name = raw.task_name ?? raw.name ?? raw.title ?? "";
+  const task_priority = normalizeTaskPriority(raw.task_priority ?? raw.priority);
+  const task_category = normalizeTaskCategory(raw.task_category ?? raw.category);
+  const task_deadline = raw.task_deadline ?? raw.deadline ?? "";
+  const task_deadline_time = raw.task_deadline_time ?? raw.deadlineTime ?? "23:59";
+  const task_duration_hours =
+    Number(raw.task_duration_hours ?? raw.estimatedHours ?? raw.durationHours ?? raw.duration ?? 0) || 0;
+
+  // Preserve flags
+  const computer_required = Boolean(raw.computer_required ?? raw.computerRequired ?? false);
+  const completed = typeof raw.completed === "boolean" ? raw.completed : false;
+
+  const id = raw.id || `task_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+  return {
+    id,
+    task_name: String(task_name || "").trim(),
+    task_priority,
+    task_category,
+    task_deadline,
+    task_deadline_time: String(task_deadline_time || "23:59").trim(),
+    task_duration_hours: task_duration_hours,
+    computer_required,
+    completed,
+
+    // Migration metadata (kept for debugging/back-compat)
+    fromDailyGoal: Boolean(raw.fromDailyGoal),
+    goalId: raw.goalId || null,
+  };
+}
+
+function normalizeAllTasksInState() {
+  if (!state.tasks || !Array.isArray(state.tasks)) {
+    state.tasks = [];
+    return;
+  }
+  let changed = false;
+  const normalized = [];
+  for (const t of state.tasks) {
+    const nt = normalizeTask(t);
+    if (!nt) continue;
+    normalized.push(nt);
+    // Detect changes by presence of legacy keys or missing canonical keys
+    if (t.name || t.priority || t.category || t.estimatedHours || t.deadline) changed = true;
+    if (!t.task_name || !t.task_priority || !t.task_category) changed = true;
+  }
+  state.tasks = normalized;
+  if (changed) {
+    saveUserData();
+  }
+}
+
 // Authentication state
 let authToken = null;
 let currentUser = null;
@@ -125,6 +218,7 @@ async function loadUserData() {
     migrateProfileData();
     migrateGoalsData();
     ensureTaskIds();
+    normalizeAllTasksInState();
     return true;
   } catch (err) {
     console.error("Error loading user data:", err);
@@ -701,7 +795,8 @@ function handleContinueWithoutLogin() {
   localStorage.removeItem("planwise_onboarding_mode");
 
   // Persist the initial guest state before navigating
-  saveUserData();
+  // In guest mode, do NOT call server endpoints. Persist locally.
+  localStorage.setItem('planwise_guest_state', JSON.stringify(state));
 
   // Go to dedicated dashboard page
   window.location.href = "dashboard.html";
@@ -1033,27 +1128,275 @@ function initProfileEditForm() {
   });
 }
 
-function initSettings() {
-  // Load current user info
-  if (currentUser) {
+async function initSettings() {
+  // Load current user info from server if available
+  const token = getAuthToken();
+  if (token && !token.startsWith('guest_')) {
+    try {
+      const res = await fetch("/api/user/info", {
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        const userInfo = await res.json();
+        $("#profileEditName").value = userInfo.name || "";
+        $("#profileEditEmail").value = userInfo.email || "";
+        if (userInfo.createdAt) {
+          const createdDate = new Date(userInfo.createdAt);
+          $("#profileCreatedAt").value = createdDate.toLocaleDateString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric'
+          });
+        }
+        currentUser = { ...currentUser, ...userInfo };
+      }
+    } catch (err) {
+      console.error("Error fetching user info:", err);
+    }
+  } else if (currentUser) {
     $("#profileEditName").value = currentUser.name || "";
     $("#profileEditEmail").value = currentUser.email || "";
+    $("#profileCreatedAt").value = "Guest Account";
   }
 
   // Initialize profile edit form (only once)
   initProfileEditForm();
+  
+  // Initialize account settings (password change, delete account)
+  initAccountSettings();
 
   // Render goals hierarchy
   renderGoalsHierarchy();
 
-  // Render blocking rules
+  // Render blocking rules with focus mode panel
+  renderFocusModePanel();
   renderBlockingRules();
   
-  // Initialize blocking rules button (only once)
+  // Initialize blocking rules buttons
   initBlockingRulesButton();
 
   // Render reflections
   renderReflectionsList();
+  
+  // Initialize new reflection button
+  initNewReflectionButton();
+  
+  // Initialize edit learning preferences button
+  initEditLearningPrefsButton();
+}
+
+// Initialize account settings (password change, delete account)
+function initAccountSettings() {
+  // Password change form
+  const passwordForm = $("#passwordChangeForm");
+  if (passwordForm && !passwordForm.dataset.initialized) {
+    passwordForm.dataset.initialized = "true";
+    
+    passwordForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const currentPassword = $("#currentPassword").value;
+      const newPassword = $("#newPassword").value;
+      const confirmPassword = $("#confirmNewPassword").value;
+      
+      const statusEl = $("#passwordChangeStatus");
+      
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        statusEl.textContent = "Please fill in all fields";
+        statusEl.className = "save-status error";
+        return;
+      }
+      
+      if (newPassword !== confirmPassword) {
+        statusEl.textContent = "New passwords do not match";
+        statusEl.className = "save-status error";
+        return;
+      }
+      
+      if (newPassword.length < 8) {
+        statusEl.textContent = "New password must be at least 8 characters";
+        statusEl.className = "save-status error";
+        return;
+      }
+      
+      const changeBtn = $("#changePasswordBtn");
+      const originalText = changeBtn.textContent;
+      changeBtn.textContent = "Changing...";
+      changeBtn.disabled = true;
+      statusEl.textContent = "Updating password...";
+      statusEl.className = "save-status loading";
+      
+      try {
+        const res = await fetch("/api/user/password", {
+          method: "PUT",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ currentPassword, newPassword }),
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+          statusEl.textContent = "Password changed successfully! ✓";
+          statusEl.className = "save-status success";
+          passwordForm.reset();
+        } else {
+          statusEl.textContent = data.error || "Failed to change password";
+          statusEl.className = "save-status error";
+        }
+      } catch (err) {
+        statusEl.textContent = "Network error. Please try again.";
+        statusEl.className = "save-status error";
+      } finally {
+        changeBtn.textContent = originalText;
+        changeBtn.disabled = false;
+      }
+    });
+  }
+  
+  // Delete account button
+  const deleteBtn = $("#deleteAccountBtn");
+  if (deleteBtn && !deleteBtn.dataset.initialized) {
+    deleteBtn.dataset.initialized = "true";
+    
+    deleteBtn.addEventListener("click", async () => {
+      const confirmed = confirm(
+        "⚠️ DELETE ACCOUNT\n\n" +
+        "This action cannot be undone. All your data will be permanently deleted:\n\n" +
+        "• Your profile and preferences\n" +
+        "• All tasks and schedules\n" +
+        "• All goals and reflections\n" +
+        "• All blocking rules\n\n" +
+        "Are you absolutely sure you want to delete your account?"
+      );
+      
+      if (!confirmed) return;
+      
+      const doubleConfirmed = confirm(
+        "FINAL CONFIRMATION\n\n" +
+        "Type 'DELETE' in the next prompt to confirm account deletion."
+      );
+      
+      if (!doubleConfirmed) return;
+      
+      const userInput = prompt("Type DELETE to confirm:");
+      if (userInput !== "DELETE") {
+        alert("Account deletion cancelled.");
+        return;
+      }
+      
+      try {
+        const res = await fetch("/api/user/account", {
+          method: "DELETE",
+          headers: getAuthHeaders(),
+        });
+        
+        if (res.ok) {
+          alert("Your account has been deleted. Goodbye!");
+          setAuthToken(null);
+          window.location.href = "index.html";
+        } else {
+          const data = await res.json();
+          alert(data.error || "Failed to delete account. Please try again.");
+        }
+      } catch (err) {
+        alert("Network error. Please try again.");
+      }
+    });
+  }
+}
+
+// Render focus mode panel in settings
+function renderFocusModePanel() {
+  const container = $("#focusModePanel");
+  if (!container) return;
+  
+  // Check if focus mode is currently active
+  const focusData = localStorage.getItem("axis_focus_mode");
+  let isActive = false;
+  let remainingMinutes = 0;
+  
+  if (focusData) {
+    try {
+      const data = JSON.parse(focusData);
+      if (data.active && data.endTime > Date.now()) {
+        isActive = true;
+        remainingMinutes = Math.floor((data.endTime - Date.now()) / 60000);
+      }
+    } catch (e) {}
+  }
+  
+  if (isActive) {
+    container.innerHTML = `
+      <div class="focus-start-panel">
+        <h4 class="focus-start-title">🎯 Focus Mode Active</h4>
+        <p style="margin: 0 0 12px; color: #6b7280; font-size: 0.85rem;">
+          ${remainingMinutes} minutes remaining. All distracting sites are blocked.
+        </p>
+        <button class="btn btn-ghost" id="stopFocusModeBtn">
+          End Focus Mode Early
+        </button>
+      </div>
+    `;
+    
+    document.getElementById("stopFocusModeBtn")?.addEventListener("click", () => {
+      localStorage.removeItem("axis_focus_mode");
+      renderFocusModePanel();
+      showToast("Focus mode ended.");
+    });
+  } else {
+    container.innerHTML = `
+      <div class="focus-start-panel">
+        <h4 class="focus-start-title">🎯 Start Focus Mode</h4>
+        <p style="margin: 0 0 12px; color: #6b7280; font-size: 0.85rem;">
+          Block all distracting sites for a set duration.
+        </p>
+        <div class="focus-duration-buttons">
+          <button class="focus-duration-btn" data-duration="25">25 min</button>
+          <button class="focus-duration-btn" data-duration="45">45 min</button>
+          <button class="focus-duration-btn" data-duration="60">1 hour</button>
+          <button class="focus-duration-btn" data-duration="90">1.5 hours</button>
+        </div>
+      </div>
+    `;
+    
+    container.querySelectorAll(".focus-duration-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const duration = parseInt(btn.dataset.duration, 10);
+        const endTime = Date.now() + (duration * 60 * 1000);
+        localStorage.setItem("axis_focus_mode", JSON.stringify({
+          active: true,
+          endTime: endTime
+        }));
+        renderFocusModePanel();
+        showToast(`Focus mode started for ${duration} minutes!`);
+      });
+    });
+  }
+}
+
+// Initialize new reflection button
+function initNewReflectionButton() {
+  const btn = $("#newReflectionBtn");
+  if (btn && !btn.dataset.initialized) {
+    btn.dataset.initialized = "true";
+    btn.addEventListener("click", () => {
+      showReflectionPrompt("weekly");
+    });
+  }
+}
+
+// Initialize edit learning preferences button
+function initEditLearningPrefsButton() {
+  const btn = $("#editLearningPrefsBtn");
+  if (btn && !btn.dataset.initialized) {
+    btn.dataset.initialized = "true";
+    btn.addEventListener("click", () => {
+      // Close settings panel
+      $("#settingsPanel")?.classList.add("hidden");
+      // Open onboarding wizard at step 1
+      restoreProfileToForm();
+      onboardingMode = null;
+      setStep(1);
+    });
+  }
 }
 
 // ---------- Initialization ----------
@@ -1101,13 +1444,6 @@ function initLandingPage() {
 document.addEventListener("DOMContentLoaded", async () => {
   const isIndexPage = Boolean(document.getElementById("landingPage"));
   if (!isIndexPage) return;
-
-  // If already authenticated (including guest mode), go straight to dashboard.
-  const token = getAuthToken();
-  if (token) {
-    window.location.replace("dashboard.html");
-    return;
-  }
 
   initAuth();
   initLandingPage();
@@ -3106,12 +3442,13 @@ function syncDailyGoalsToTasks() {
     if (!existingGoalTaskIds.includes(goal.id)) {
       const task = {
         id: `task_goal_${goal.id}`,
-        name: goal.name,
-        description: `Daily goal: ${goal.name}`,
-        priority: "important-not-urgent",
-        category: goal.name.toLowerCase().replace(/\s+/g, "-"),
-        estimatedHours: 1, // Default 1 hour for daily goals
-        deadline: null,
+        task_name: goal.name,
+        task_priority: "Important, Not Urgent",
+        task_category: goal.name.toLowerCase().replace(/\s+/g, "-"),
+        // Daily goals should be actionable today, so set a default deadline.
+        task_deadline: todayLocalISODate(),
+        task_deadline_time: "23:59",
+        task_duration_hours: 1, // Default 1 hour for daily goals
         completed: false,
         fromDailyGoal: true,
         goalId: goal.id
@@ -3122,14 +3459,16 @@ function syncDailyGoalsToTasks() {
     } else {
       // Update existing task if goal name changed
       const existingTask = state.tasks.find(t => t.goalId === goal.id);
-      if (existingTask && existingTask.name !== goal.name) {
-        existingTask.name = goal.name;
-        existingTask.description = `Daily goal: ${goal.name}`;
-        existingTask.category = goal.name.toLowerCase().replace(/\s+/g, "-");
+      if (existingTask && existingTask.task_name !== goal.name) {
+        existingTask.task_name = goal.name;
+        existingTask.task_category = goal.name.toLowerCase().replace(/\s+/g, "-");
         console.log("Updated task from daily goal:", existingTask);
       }
     }
   });
+
+  // Ensure overall task list stays on the canonical schema
+  normalizeAllTasksInState();
   
   // Remove tasks for goals that no longer exist
   const dailyGoalIds = new Set(allDailyGoals.map(g => g.id));

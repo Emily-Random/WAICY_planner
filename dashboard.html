@@ -423,52 +423,116 @@
           </div>
           <div class="settings-tabs">
             <button class="settings-tab active" data-tab="profile">Profile</button>
+            <button class="settings-tab" data-tab="account">Account</button>
             <button class="settings-tab" data-tab="goals">Goals</button>
-            <button class="settings-tab" data-tab="blocking">Website Blocking</button>
+            <button class="settings-tab" data-tab="blocking">Focus & Blocking</button>
             <button class="settings-tab" data-tab="reflections">Reflections</button>
           </div>
           
           <!-- Profile Settings -->
           <div id="settingsProfile" class="settings-section active">
             <h3>Edit Profile</h3>
+            <div id="profileSaveStatus" class="save-status"></div>
             <form id="profileEditForm" class="settings-form">
-              <!-- Profile fields from original onboarding will be moved here -->
               <div class="form-group">
-                <label>Name</label>
-                <input type="text" id="profileEditName" />
+                <label>Display Name</label>
+                <input type="text" id="profileEditName" placeholder="Your name" required />
               </div>
               <div class="form-group">
                 <label>Email</label>
                 <input type="email" id="profileEditEmail" disabled />
                 <small class="form-hint">Email cannot be changed</small>
               </div>
-              <button type="submit" class="btn btn-primary">Save Changes</button>
+              <div class="form-group">
+                <label>Account Created</label>
+                <input type="text" id="profileCreatedAt" disabled />
+              </div>
+              <button type="submit" class="btn btn-primary" id="saveProfileBtn">Save Changes</button>
             </form>
+            
+            <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border-subtle);">
+            
+            <h3>Learning Preferences</h3>
+            <p class="settings-description">Update your learning personalization settings.</p>
+            <button type="button" class="btn btn-secondary" id="editLearningPrefsBtn">
+              Edit Learning Preferences
+            </button>
+          </div>
+
+          <!-- Account Settings -->
+          <div id="settingsAccount" class="settings-section">
+            <h3>Change Password</h3>
+            <div id="passwordChangeStatus" class="save-status"></div>
+            <form id="passwordChangeForm" class="settings-form">
+              <div class="form-group">
+                <label>Current Password</label>
+                <input type="password" id="currentPassword" placeholder="Enter current password" />
+              </div>
+              <div class="form-group">
+                <label>New Password</label>
+                <input type="password" id="newPassword" placeholder="Enter new password (min 8 characters)" minlength="8" />
+              </div>
+              <div class="form-group">
+                <label>Confirm New Password</label>
+                <input type="password" id="confirmNewPassword" placeholder="Confirm new password" />
+              </div>
+              <button type="submit" class="btn btn-primary" id="changePasswordBtn">Change Password</button>
+            </form>
+            
+            <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border-subtle);">
+            
+            <h3 style="color: #dc2626;">Danger Zone</h3>
+            <p class="settings-description" style="color: #991b1b;">
+              Once you delete your account, there is no going back. All your data will be permanently removed.
+            </p>
+            <button type="button" class="btn btn-ghost" id="deleteAccountBtn" 
+                    style="color: #dc2626; border-color: #dc2626;">
+              Delete My Account
+            </button>
           </div>
 
           <!-- Goals Settings -->
           <div id="settingsGoals" class="settings-section">
             <h3>Goals Hierarchy</h3>
+            <p class="settings-description">Manage your goals across different timeframes.</p>
             <div id="goalsHierarchy" class="goals-hierarchy">
               <!-- Goals hierarchy will be rendered here -->
             </div>
           </div>
 
-          <!-- Blocking Settings -->
+          <!-- Focus & Blocking Settings -->
           <div id="settingsBlocking" class="settings-section">
+            <div id="focusModePanel">
+              <!-- Focus mode panel will be rendered here by blocker component -->
+            </div>
+            
             <h3>Website Blocking Rules</h3>
-            <p class="settings-description">Configure rules to block or redirect distracting websites.</p>
+            <p class="settings-description">
+              Configure rules to block or redirect distracting websites during focus time.
+              These rules are enforced when focus mode is active.
+            </p>
             <div id="blockingRulesList" class="blocking-rules-list">
               <!-- Blocking rules will be rendered here -->
             </div>
-            <button id="addBlockingRuleBtn" class="btn btn-secondary">Add Rule</button>
+            <div style="display: flex; gap: 12px; margin-top: 16px;">
+              <button id="addBlockingRuleBtn" class="btn btn-secondary">+ Add Rule</button>
+              <button id="addCommonRulesBtn" class="btn btn-ghost">Add Common Sites</button>
+            </div>
           </div>
 
           <!-- Reflections Settings -->
           <div id="settingsReflections" class="settings-section">
             <h3>Reflection History</h3>
+            <p class="settings-description">
+              View your past reflections and AI-generated insights.
+            </p>
             <div id="reflectionsList" class="reflections-list">
               <!-- Reflection history will be rendered here -->
+            </div>
+            <div style="margin-top: 16px;">
+              <button type="button" class="btn btn-primary" id="newReflectionBtn">
+                Write New Reflection
+              </button>
             </div>
           </div>
         </div>

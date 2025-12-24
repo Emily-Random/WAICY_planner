@@ -2956,4 +2956,343 @@ textarea {
   }
 }
 
+/* Save Status */
+.save-status {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+  display: none;
+}
+.save-status.success {
+  display: block;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #16a34a;
+}
+.save-status.error {
+  display: block;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #dc2626;
+}
+.save-status.loading {
+  display: block;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #2563eb;
+}
 
+/* Toast Container - Global */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* Improved Settings Panel */
+.settings-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 24px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.settings-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-section h3 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+/* Password form styling */
+#passwordChangeForm .form-group input {
+  width: 100%;
+}
+
+/* Account danger zone */
+#deleteAccountBtn {
+  background: transparent;
+}
+#deleteAccountBtn:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Improved form styling */
+.settings-form .form-group {
+  margin-bottom: 16px;
+}
+
+.settings-form .form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.settings-form .form-group input:disabled {
+  background: var(--bg-alt);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* Empty state for lists */
+.empty-state-inline {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-muted);
+}
+.empty-state-inline-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+.empty-state-inline-text {
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Confirm dialog styling */
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+.confirm-dialog {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.4);
+}
+.confirm-dialog h3 {
+  margin: 0 0 12px;
+  font-size: 1.2rem;
+}
+.confirm-dialog p {
+  margin: 0 0 20px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.confirm-dialog-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* Notification badge */
+.notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Improved calendar drag feedback */
+.calendar-task-block.dragging {
+  opacity: 0.6;
+  transform: rotate(3deg) scale(1.05);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.25);
+  z-index: 1000;
+}
+
+.calendar-slot-cell.drag-over {
+  background: rgba(34, 197, 94, 0.2) !important;
+  border: 2px dashed #22c55e !important;
+}
+
+/* Conflict indicator */
+.calendar-task-block.conflict {
+  border: 2px solid #ef4444;
+  animation: conflict-pulse 1s ease-in-out infinite;
+}
+@keyframes conflict-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+/* Quick action buttons on calendar blocks */
+.calendar-task-actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: none;
+  gap: 4px;
+}
+.calendar-task-block:hover .calendar-task-actions {
+  display: flex;
+}
+.calendar-task-action-btn {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: rgba(255,255,255,0.9);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: transform 0.1s, background 0.1s;
+}
+.calendar-task-action-btn:hover {
+  transform: scale(1.1);
+  background: white;
+}
+
+/* Reschedule indicator */
+.reschedule-indicator {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent-green);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  z-index: 1000;
+  animation: slide-up 0.3s ease-out;
+}
+@keyframes slide-up {
+  from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* Improved task list styling */
+.task-list:empty::after {
+  content: "No tasks yet. Click '+ Add Task' to get started.";
+  display: block;
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* Loading skeleton for task list */
+.task-skeleton {
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: var(--radius-md);
+  background: var(--bg-alt);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Improved button hover states */
+.btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-green-soft);
+}
+
+.btn-icon:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-green-soft);
+}
+
+/* Tooltip styles */
+[data-tooltip] {
+  position: relative;
+}
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  background: #1f2937;
+  color: white;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  z-index: 1000;
+  margin-bottom: 4px;
+}
+[data-tooltip]:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Keyboard shortcut hints */
+.kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Success animation */
+@keyframes success-check {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+.success-check {
+  display: inline-block;
+  animation: success-check 0.4s ease-out;
+}
+
+/* Focus ring for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--accent-green);
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .app-header,
+  .sidebar,
+  .settings-panel,
+  .modal,
+  .toast-container {
+    display: none !important;
+  }
+  .calendar-section {
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    border: none;
+  }
+}
