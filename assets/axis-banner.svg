@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" role="img" aria-label="Axis banner">
+  <title>Axis</title>
+  <g>
+    <g transform="translate(0 0)">
+      <g transform="translate(600 120)">
+        <g transform="translate(-250 0)">
+          <circle cx="0" cy="0" r="56" fill="#e41d3d" />
+          <circle cx="0" cy="0" r="44" fill="#ffffff" />
+          <circle cx="0" cy="0" r="32" fill="#e41d3d" />
+          <circle cx="0" cy="0" r="18" fill="#ffffff" />
+          <circle cx="0" cy="0" r="5" fill="#0b0b0b" />
+        </g>
+
+        <text
+          x="-150"
+          y="48"
+          font-family="Playfair Display, Georgia, 'Times New Roman', serif"
+          font-size="160"
+          font-weight="700"
+          fill="#ffffff"
+          stroke="#5b4ee6"
+          stroke-width="6"
+          paint-order="stroke fill"
+          letter-spacing="2"
+        >Axis</text>
+      </g>
+    </g>
+
+    <text
+      x="600"
+      y="240"
+      text-anchor="middle"
+      font-family="Playfair Display, Georgia, 'Times New Roman', serif"
+      font-size="64"
+      font-weight="600"
+      fill="#ffffff"
+      stroke="#5b4ee6"
+      stroke-width="4"
+      paint-order="stroke fill"
+      opacity="0.92"
+    >Precision planning with calm focus.</text>
+  </g>
+</svg>
