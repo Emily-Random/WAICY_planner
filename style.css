@@ -2623,11 +2623,12 @@ textarea {
 
 .hero-tagline {
   font-size: 1.5rem;
-  margin: 0 0 3rem 0;
+  margin: 0 auto 3rem auto;
   animation: fadeInUp 0.8s var(--ease-smooth) 0.4s both;
   color: rgba(255, 255, 255, 0.9);
   max-width: 700px;
   line-height: 1.6;
+  text-align: center;
 }
 
 .hero-btn-group {
@@ -2758,6 +2759,20 @@ textarea {
   color: var(--text-muted);
   line-height: 1.6;
   font-size: 1.2rem;
+}
+
+/* Dark mode high contrast fix for features section */
+:root[data-theme="dark"] .features-section h2 {
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="dark"] .features-section .feature-item h3 {
+  color: #ff6b86;
+}
+
+:root[data-theme="dark"] .features-section .feature-item p {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .steps-grid {
