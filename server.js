@@ -6,6 +6,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const { z } = require("zod");
+const crypto = require("crypto");
 const path = require("path");
 const fs = require("fs").promises;
 const bcrypt = require("bcryptjs");
@@ -62,6 +63,138 @@ function safeParseJSON(text) {
   } catch {
     return null;
   }
+}
+
+// ---------- iCalendar (.ics) helpers ----------
+function icsEscapeText(value) {
+  return String(value ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\r/g, "")
+    .replace(/\n/g, "\\n")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,");
+}
+
+function formatIcsDateTimeUtc(date) {
+  const iso = date.toISOString(); // 2026-01-05T14:00:00.000Z
+  return iso.replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function foldIcsLine(line) {
+  const parts = [];
+  let remaining = String(line);
+  // RFC 5545: 75 octets; approximate with 75 chars for ASCII output.
+  while (remaining.length > 75) {
+    parts.push(remaining.slice(0, 75));
+    remaining = ` ${remaining.slice(75)}`;
+  }
+  parts.push(remaining);
+  return parts;
+}
+
+function buildAxisIcs({ userId, data, options }) {
+  const includeFixedBlocks = options?.includeFixedBlocks !== false;
+  const includeCompletedTasks = options?.includeCompletedTasks === true;
+  const reminderMinutes = Number.isFinite(options?.reminderMinutes)
+    ? Math.max(0, Math.min(240, Math.round(options.reminderMinutes)))
+    : 15;
+
+  const tasks = Array.isArray(data?.tasks) ? data.tasks : [];
+  const tasksById = new Map(tasks.map((t) => [t.id, t]));
+  const completedTaskIds = new Set(tasks.filter((t) => t?.completed).map((t) => t.id));
+
+  const scheduleBlocks = Array.isArray(data?.schedule) ? data.schedule : [];
+  const fixedBlocks = includeFixedBlocks && Array.isArray(data?.fixedBlocks) ? data.fixedBlocks : [];
+
+  const now = new Date();
+  const dtStamp = formatIcsDateTimeUtc(now);
+  const calName = "Axis Schedule";
+
+  const lines = [];
+  const push = (line) => foldIcsLine(line).forEach((l) => lines.push(l));
+
+  push("BEGIN:VCALENDAR");
+  push("VERSION:2.0");
+  push("CALSCALE:GREGORIAN");
+  push("METHOD:PUBLISH");
+  push("PRODID:-//Axis//EN");
+  push(`X-WR-CALNAME:${icsEscapeText(calName)}`);
+  push("X-WR-TIMEZONE:UTC");
+
+  const addEvent = ({ summary, description, start, end, categories, uidSeed }) => {
+    const uid = crypto
+      .createHash("sha1")
+      .update(String(uidSeed || `${userId}:${summary}:${start.toISOString()}:${end.toISOString()}`))
+      .digest("hex");
+
+    push("BEGIN:VEVENT");
+    push(`UID:${uid}@axis`);
+    push(`DTSTAMP:${dtStamp}`);
+    push(`DTSTART:${formatIcsDateTimeUtc(start)}`);
+    push(`DTEND:${formatIcsDateTimeUtc(end)}`);
+    push(`SUMMARY:${icsEscapeText(summary)}`);
+    if (description) push(`DESCRIPTION:${icsEscapeText(description)}`);
+    if (categories?.length) push(`CATEGORIES:${categories.map((c) => icsEscapeText(c)).join(",")}`);
+
+    if (reminderMinutes > 0) {
+      push("BEGIN:VALARM");
+      push("ACTION:DISPLAY");
+      push(`DESCRIPTION:${icsEscapeText(summary)}`);
+      push(`TRIGGER:-PT${reminderMinutes}M`);
+      push("END:VALARM");
+    }
+
+    push("END:VEVENT");
+  };
+
+  scheduleBlocks.forEach((b) => {
+    const taskId = b?.taskId;
+    if (!taskId) return;
+    if (!includeCompletedTasks && completedTaskIds.has(taskId)) return;
+    const start = new Date(b.start);
+    const end = new Date(b.end);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return;
+
+    const task = tasksById.get(taskId) || null;
+    const summary = task?.task_name ? String(task.task_name) : "Task";
+    const category = task?.task_category ? String(task.task_category) : "";
+    const priority = task?.task_priority ? String(task.task_priority) : "";
+    const deadline = task?.task_deadline ? `${task.task_deadline} ${task.task_deadline_time || ""}`.trim() : "";
+
+    const descriptionParts = [];
+    if (category) descriptionParts.push(`Category: ${category}`);
+    if (priority) descriptionParts.push(`Priority: ${priority}`);
+    if (deadline) descriptionParts.push(`Deadline: ${deadline}`);
+
+    addEvent({
+      summary,
+      description: descriptionParts.join("\n"),
+      start,
+      end,
+      categories: category ? [category] : [],
+      uidSeed: `${userId}:task:${taskId}:${start.toISOString()}:${end.toISOString()}`,
+    });
+  });
+
+  fixedBlocks.forEach((b) => {
+    const start = new Date(b.start);
+    const end = new Date(b.end);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return;
+
+    const label = String(b.label || "Fixed block");
+    const category = b.category ? String(b.category) : "";
+    addEvent({
+      summary: label,
+      description: category ? `Category: ${category}` : "",
+      start,
+      end,
+      categories: category ? [category] : [],
+      uidSeed: `${userId}:fixed:${label}:${start.toISOString()}:${end.toISOString()}`,
+    });
+  });
+
+  push("END:VCALENDAR");
+  return `${lines.join("\r\n")}\r\n`;
 }
 
 async function callDeepSeek({
@@ -166,6 +299,56 @@ const loginSchema = z.object({
   password: z.string().min(1).max(200),
 });
 
+const aiRescheduleSchema = z.object({
+  tasks: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(200),
+        task_name: z.string().optional(),
+        task_priority: z.string().optional(),
+        task_category: z.string().optional(),
+        task_deadline: z.string().optional(),
+        task_deadline_time: z.string().optional(),
+        task_duration_hours: z.number().optional().nullable(),
+        completed: z.boolean().optional(),
+      }),
+    )
+    .max(800)
+    .default([]),
+  fixedBlocks: z
+    .array(
+      z.object({
+        start: z.string().min(1).max(60),
+        end: z.string().min(1).max(60),
+        label: z.string().optional(),
+        category: z.string().optional(),
+        kind: z.string().optional(),
+      }),
+    )
+    .max(1200)
+    .default([]),
+  schedule: z
+    .array(
+      z.object({
+        taskId: z.string().optional(),
+        start: z.string().min(1).max(60),
+        end: z.string().min(1).max(60),
+        kind: z.string().optional(),
+      }),
+    )
+    .max(2000)
+    .default([]),
+  profile: z.any().optional(),
+  horizonDays: z.number().int().min(1).max(21).default(7),
+  maxHoursPerDay: z.number().min(1).max(16).default(10),
+});
+
+const calendarExportSchema = z.object({
+  includeFixedBlocks: z.boolean().optional().default(true),
+  includeCompletedTasks: z.boolean().optional().default(false),
+  reminderMinutes: z.number().int().min(0).max(240).optional().default(15),
+});
+
 function validateBody(schema) {
   return (req, res, next) => {
     const parsed = schema.safeParse(req.body);
@@ -244,6 +427,41 @@ function authenticateToken(req, res, next) {
     req.user = user;
     next();
   });
+}
+
+async function getOrCreateCalendarToken(userId) {
+  const users = await getUsers();
+  let foundEmail = null;
+  let record = null;
+
+  for (const [email, user] of Object.entries(users)) {
+    if (user?.id === userId) {
+      foundEmail = email;
+      record = user;
+      break;
+    }
+  }
+
+  if (!record || !foundEmail) return null;
+  if (record.calendarToken && typeof record.calendarToken === "string" && record.calendarToken.length >= 24) {
+    return record.calendarToken;
+  }
+
+  const token = crypto.randomBytes(24).toString("hex");
+  record.calendarToken = token;
+  record.updatedAt = new Date().toISOString();
+  users[foundEmail] = record;
+  await saveUsers(users);
+  return token;
+}
+
+async function getUserIdByCalendarToken(token) {
+  if (!token || typeof token !== "string" || token.length < 24) return null;
+  const users = await getUsers();
+  for (const user of Object.values(users)) {
+    if (user?.calendarToken === token) return user.id;
+  }
+  return null;
 }
 
 // Authentication endpoints
@@ -386,6 +604,81 @@ app.post("/api/user/data", authenticateToken, async (req, res) => {
   } catch (err) {
     console.error("Save user data error:", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------- Calendar Export (.ics) ----------
+
+app.get("/api/calendar/token", authenticateToken, async (req, res) => {
+  try {
+    const token = await getOrCreateCalendarToken(req.user.userId);
+    if (!token) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const subscribeUrl = `${baseUrl}/api/calendar/subscribe/${token}.ics`;
+    const webcalUrl = subscribeUrl.replace(/^https?:\/\//, "webcal://");
+    res.json({ token, subscribeUrl, webcalUrl });
+  } catch (err) {
+    console.error("calendar token error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post(
+  "/api/calendar/export",
+  authenticateToken,
+  validateBody(calendarExportSchema),
+  async (req, res) => {
+    try {
+      const data = await getUserData(req.user.userId);
+      if (!data) {
+        return res.status(404).json({ error: "User data not found" });
+      }
+
+      const options = {
+        ...(data.calendarExportSettings && typeof data.calendarExportSettings === "object"
+          ? data.calendarExportSettings
+          : {}),
+        ...req.body,
+      };
+
+      const ics = buildAxisIcs({ userId: req.user.userId, data, options });
+      res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+      res.setHeader("Content-Disposition", 'attachment; filename="axis-schedule.ics"');
+      res.send(ics);
+    } catch (err) {
+      console.error("calendar export error:", err);
+      res.status(500).json({ error: "Calendar export failed" });
+    }
+  },
+);
+
+app.get("/api/calendar/subscribe/:token.ics", async (req, res) => {
+  try {
+    const token = req.params.token;
+    const userId = await getUserIdByCalendarToken(token);
+    if (!userId) {
+      return res.status(404).send("Not found");
+    }
+
+    const data = await getUserData(userId);
+    if (!data) {
+      return res.status(404).send("Not found");
+    }
+
+    const options =
+      data.calendarExportSettings && typeof data.calendarExportSettings === "object"
+        ? data.calendarExportSettings
+        : {};
+
+    const ics = buildAxisIcs({ userId, data, options });
+    res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    res.send(ics);
+  } catch (err) {
+    console.error("calendar subscribe error:", err);
+    res.status(500).send("Calendar subscribe failed");
   }
 });
 
@@ -647,6 +940,141 @@ Productive windows: ${JSON.stringify(productiveWindows).slice(0, 1500)}
     res.status(500).json({ error: err.message || "Schedule generation failed" });
   }
 });
+
+app.post(
+  "/api/ai/reschedule",
+  authenticateToken,
+  validateBody(aiRescheduleSchema),
+  async (req, res) => {
+    try {
+      const {
+        tasks = [],
+        fixedBlocks = [],
+        schedule = [],
+        profile = {},
+        horizonDays = 7,
+        maxHoursPerDay = 10,
+      } = req.body || {};
+
+      const tasksBrief = tasks
+        .filter((t) => t && typeof t === "object" && typeof t.id === "string")
+        .filter((t) => !t.completed)
+        .slice(0, 350)
+        .map((t) => ({
+          id: t.id,
+          name: String(t.task_name || "").slice(0, 140),
+          priority: String(t.task_priority || ""),
+          category: String(t.task_category || ""),
+          deadline: `${t.task_deadline || ""}T${t.task_deadline_time || "23:59"}`,
+          durationHours: Number(t.task_duration_hours || 0) || 0,
+        }));
+
+      const fixedBrief = fixedBlocks
+        .filter((b) => b && typeof b === "object" && b.start && b.end)
+        .slice(0, 500)
+        .map((b) => ({
+          start: b.start,
+          end: b.end,
+          label: String(b.label || b.kind || "Fixed").slice(0, 80),
+          category: String(b.category || ""),
+        }));
+
+      const scheduleBrief = schedule
+        .filter((b) => b && typeof b === "object" && b.start && b.end)
+        .slice(0, 500)
+        .map((b) => ({
+          taskId: b.taskId || "",
+          start: b.start,
+          end: b.end,
+        }));
+
+      const profileBrief = (() => {
+        if (!profile || typeof profile !== "object") return {};
+        const keep = [
+          "procrastinator_type",
+          "preferred_work_style",
+          "preferred_study_method",
+          "most_productive_time",
+          "is_procrastinator",
+          "has_trouble_finishing",
+          "productive_windows",
+        ];
+        const out = {};
+        keep.forEach((k) => {
+          if (profile[k] !== undefined) out[k] = profile[k];
+        });
+        return out;
+      })();
+
+      const today = new Date();
+      const todayIso = today.toISOString().slice(0, 10);
+
+      const userPrompt = `
+Rebalance the user's schedule for the next ${horizonDays} days starting ${todayIso}.
+Return JSON only: {"blocks":[{"taskId":"task-id","start":"ISO-8601 UTC","end":"ISO-8601 UTC","reason":"short"}]}.
+
+Hard rules:
+- "start" and "end" MUST be ISO-8601 timestamps in UTC with a trailing "Z", e.g. "2026-01-05T14:00:00Z".
+- Do not create blocks that overlap fixedBlocks.
+- Do not overlap your own blocks.
+- Only use taskIds from the provided tasks list.
+- Keep total scheduled work per day <= ${maxHoursPerDay} hours.
+- Each block must be at least 15 minutes and end after start.
+
+Soft rules:
+- Prefer scheduling higher priority and earlier deadlines first.
+- Split long tasks into multiple blocks, adding small buffers when reasonable.
+- Use the user's focus preferences when provided in profile.
+
+Tasks: ${JSON.stringify(tasksBrief).slice(0, 7000)}
+Fixed blocks (unavailable): ${JSON.stringify(fixedBrief).slice(0, 7000)}
+Current schedule (may be ignored): ${JSON.stringify(scheduleBrief).slice(0, 6000)}
+Profile: ${JSON.stringify(profileBrief).slice(0, 2000)}
+`.trim();
+
+      const reply = await callDeepSeek({
+        system: "You are a time-blocking assistant. Return strict JSON only.",
+        user: userPrompt,
+        temperature: 0.25,
+        maxTokens: 1200,
+        expectJSON: true,
+      });
+
+      const parsed = safeParseJSON(reply) || {};
+      const blocks = Array.isArray(parsed.blocks) ? parsed.blocks : [];
+      if (!blocks.length) {
+        return res.status(502).json({ error: "AI returned no schedule blocks." });
+      }
+
+      // Basic validation (client also validates). Reject if nothing survives.
+      const taskIdSet = new Set(tasksBrief.map((t) => t.id));
+      const normalized = [];
+      for (const b of blocks) {
+        if (!b || typeof b !== "object") continue;
+        if (!taskIdSet.has(b.taskId)) continue;
+        const start = new Date(b.start);
+        const end = new Date(b.end);
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) continue;
+        if (end <= start) continue;
+        normalized.push({
+          taskId: b.taskId,
+          start: start.toISOString(),
+          end: end.toISOString(),
+          reason: typeof b.reason === "string" ? b.reason.slice(0, 140) : "",
+        });
+      }
+
+      if (!normalized.length) {
+        return res.status(502).json({ error: "AI returned invalid schedule blocks." });
+      }
+
+      res.json({ blocks: normalized });
+    } catch (err) {
+      console.error("reschedule error:", err);
+      res.status(500).json({ error: err.message || "Reschedule failed" });
+    }
+  },
+);
 
 app.post("/api/ai/reflection-summary", authenticateToken, async (req, res) => {
   try {

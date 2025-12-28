@@ -14,7 +14,9 @@
       } catch {}
     })();
   </script>
+  <meta name="theme-color" content="#10b981" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="manifest" href="manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -56,6 +58,7 @@
               <div id="notificationList" class="notification-list"></div>
             </div>
           </div>
+          <div id="offlineIndicator" class="offline-indicator hidden" role="status" aria-live="polite">Offline</div>
           <button type="button" class="btn-icon theme-toggle" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">
             <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/>
@@ -152,6 +155,37 @@
                   </div>
                   <div class="score-label" id="scoreLabel">Getting Started</div>
                 </div>
+              </div>
+              <div class="analytics-section">
+                <h4>Focus Heatmap</h4>
+                <div id="focusHeatmap" class="focus-heatmap"></div>
+              </div>
+              <div class="analytics-section">
+                <h4>Completion Trends</h4>
+                <div id="completionTrends" class="completion-trends"></div>
+              </div>
+              <div class="analytics-section">
+                <h4>Procrastination Patterns</h4>
+                <div id="procrastinationPatterns" class="procrastination-patterns"></div>
+              </div>
+              <div class="analytics-section">
+                <h4>Category Time Allocation</h4>
+                <div id="categoryAllocation" class="category-allocation"></div>
+              </div>
+              <div class="analytics-section">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                  <h4 style="margin: 0;">Weekly Insights</h4>
+                  <div style="display: inline-flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" id="generateWeeklyInsightsBtn" class="btn btn-secondary btn-sm">Generate</button>
+                    <button type="button" id="exportInsightsPdfBtn" class="btn btn-ghost btn-sm">Export PDF</button>
+                    <button type="button" id="exportInsightsPngBtn" class="btn btn-ghost btn-sm">Export PNG</button>
+                  </div>
+                </div>
+                <div id="weeklyInsights" class="weekly-insights"></div>
+              </div>
+              <div class="analytics-section">
+                <h4>Goals Timeline</h4>
+                <div id="goalsTimeline" class="goals-timeline"></div>
               </div>
             </div>
           </div>
@@ -273,6 +307,22 @@
                 <path d="M1 8v6h6M15 8V2H9M1 8l6-6M15 8l-6 6"/>
               </svg>
               Sync Calendar
+            </button>
+            <button id="rebalanceWeekBtn" class="btn btn-secondary btn-sync" title="Rebalance your schedule for the week">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                <path d="M8 1a7 7 0 1 0 7 7"/>
+                <path d="M13.5 3.5v4h-4"/>
+              </svg>
+              Rebalance Week
+            </button>
+            <button id="calendarExportBtn" class="btn btn-secondary btn-sync" title="Export schedule to iCal/Google" aria-label="Export schedule">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;" aria-hidden="true">
+                <path d="M8 2v7"/>
+                <path d="M5 6l3 3 3-3"/>
+                <path d="M2 13h12"/>
+              </svg>
+              Export
+              <span id="calendarExportBadge" class="calendar-export-badge hidden" aria-hidden="true"></span>
             </button>
             <button class="btn-toggle-view active" data-view="daily">Daily</button>
             <button class="btn-toggle-view" data-view="weekly">Weekly</button>
@@ -571,6 +621,7 @@
             <button class="settings-tab" data-tab="goals">Goals</button>
             <button class="settings-tab" data-tab="blocking">Focus & Blocking</button>
             <button class="settings-tab" data-tab="notifications">Notifications</button>
+            <button class="settings-tab" data-tab="experience">Experience</button>
             <button class="settings-tab" data-tab="reflections">Reflections</button>
             <button class="settings-tab" data-tab="data">Data</button>
           </div>
@@ -709,6 +760,41 @@
                 <span id="notifPermissionStatus" class="settings-description" style="margin: 0;">Permission: —</span>
               </div>
             </div>
+          </div>
+
+          <!-- Experience Settings -->
+          <div id="settingsExperience" class="settings-section">
+            <h3>Experience</h3>
+            <p class="settings-description">
+              Customize celebrations and motion. If you prefer less animation, enable “Reduce motion” in your OS settings.
+            </p>
+            <div class="notification-settings-grid">
+              <label class="toggle-row">
+                <input type="checkbox" id="celebrationsEnabled" />
+                <span>Enable task celebrations</span>
+              </label>
+              <label class="toggle-row">
+                <input type="checkbox" id="celebrationsSounds" />
+                <span>Sound effects (optional)</span>
+              </label>
+              <label class="toggle-row">
+                <input type="checkbox" id="celebrationsStreaks" />
+                <span>Streak celebrations (3+ tasks)</span>
+              </label>
+            </div>
+            <div style="margin-top: 18px;">
+              <h4 style="margin: 0 0 10px;">Achievements</h4>
+              <div id="achievementBadges" class="achievement-badges"></div>
+            </div>
+
+            <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border-subtle);">
+
+            <h3>Install</h3>
+            <p class="settings-description">
+              Install Axis as an app for faster launch and offline access (supported browsers only).
+            </p>
+            <button type="button" id="installAppBtn" class="btn btn-secondary btn-sm hidden">Install Axis</button>
+            <div id="installAppStatus" class="settings-description" style="margin: 10px 0 0;">Status: —</div>
           </div>
 
           <!-- Reflections Settings -->
@@ -869,6 +955,19 @@
             </div>
 
             <div class="form-group">
+              <label for="taskTemplateSelect">Template (optional)</label>
+              <div class="template-row">
+                <select id="taskTemplateSelect">
+                  <option value="">No template</option>
+                </select>
+                <button type="button" id="saveTaskAsTemplateBtn" class="btn btn-ghost btn-sm" title="Save current fields as a template">
+                  Save as template
+                </button>
+              </div>
+              <small class="form-hint">Templates can pre-fill category, priority, duration, and recurrence.</small>
+            </div>
+
+            <div class="form-group">
               <label>Is this task urgent? (needs to be done soon)</label>
               <div class="button-group" id="taskEditor_urgent_group">
                 <button type="button" data-value="yes">Yes, it's urgent</button>
@@ -952,6 +1051,137 @@
         </div>
       </div>
 
+      <!-- Smart Rescheduling Modal -->
+      <div id="smartRescheduleModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Smart rescheduling">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-content-large">
+          <div class="modal-header">
+            <h2>Smart Rescheduling</h2>
+            <button id="closeSmartRescheduleBtn" class="btn-icon" title="Close">×</button>
+          </div>
+          <div class="modal-form">
+            <p class="settings-description" style="margin-top: 0;">
+              Review overdue tasks, split large work into manageable chunks, or rebalance your week.
+            </p>
+            <div id="smartRescheduleList" class="smart-reschedule-list"></div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap;">
+              <button type="button" id="smartRescheduleLocalBtn" class="btn btn-secondary">Rebalance Locally</button>
+              <button type="button" id="smartRescheduleAiBtn" class="btn btn-primary">Rebalance with AI</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar Export Modal -->
+      <div id="calendarExportModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Calendar export">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-content-large">
+          <div class="modal-header">
+            <h2>Calendar Export</h2>
+            <button id="closeCalendarExportBtn" class="btn-icon" title="Close">×</button>
+          </div>
+          <div class="modal-form">
+            <p class="settings-description" style="margin-top: 0;">
+              Download a `.ics` file, or subscribe so your calendar stays up to date.
+            </p>
+
+            <div class="calendar-export-actions">
+              <button type="button" id="downloadIcsBtn" class="btn btn-primary">Download .ics</button>
+              <button type="button" id="copyWebcalBtn" class="btn btn-secondary">Copy webcal URL</button>
+              <button type="button" id="googleCalendarBtn" class="btn btn-ghost">Google Calendar</button>
+            </div>
+
+            <div id="calendarExportLast" class="settings-description" style="margin: 12px 0 0;">
+              Last export: —
+            </div>
+
+            <hr style="margin: 18px 0; border: none; border-top: 1px solid var(--border-subtle);">
+
+            <h4 style="margin: 0 0 10px;">Export settings</h4>
+            <div class="notification-settings-grid">
+              <label class="toggle-row">
+                <input type="checkbox" id="exportIncludeFixedBlocks" />
+                <span>Include fixed blocks</span>
+              </label>
+              <label class="toggle-row">
+                <input type="checkbox" id="exportIncludeCompletedTasks" />
+                <span>Include completed tasks</span>
+              </label>
+            </div>
+            <div class="form-group" style="margin-top: 12px;">
+              <label for="exportReminderMinutes">Default reminder (minutes)</label>
+              <input type="number" id="exportReminderMinutes" min="0" step="5" />
+              <small class="form-hint">Set to 0 to disable event reminders.</small>
+            </div>
+            <div id="calendarExportHelp" class="settings-description" style="margin: 10px 0 0;">
+              Tip: If you open Google Calendar, Axis will copy the subscription URL for you.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Goal Details Modal -->
+      <div id="goalDetailsModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Goal details">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-content-large">
+          <div class="modal-header">
+            <h2 id="goalDetailsTitle">Goal Progress</h2>
+            <button id="closeGoalDetailsBtn" class="btn-icon" title="Close">×</button>
+          </div>
+          <form id="goalDetailsForm" class="modal-form">
+            <input type="hidden" id="goalDetailsId" />
+            <div class="form-group">
+              <label>Progress</label>
+              <div class="goal-progress-editor">
+                <input type="range" id="goalManualProgress" min="0" max="100" step="1" />
+                <div class="goal-progress-editor-meta">
+                  <span id="goalProgressValue">0%</span>
+                  <span id="goalProgressMode" class="task-badge">Manual</span>
+                </div>
+              </div>
+              <small class="form-hint" id="goalProgressHint">Manual progress is available when a goal has no linked tasks.</small>
+            </div>
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label for="goalStartDate">Start date</label>
+                <input type="date" id="goalStartDate" />
+              </div>
+              <div>
+                <label for="goalEndDate">End date</label>
+                <input type="date" id="goalEndDate" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="goalMilestones">Milestones (percent, comma separated)</label>
+              <input type="text" id="goalMilestones" placeholder="e.g., 25,50,75" />
+            </div>
+            <div class="form-group">
+              <label>Linked tasks</label>
+              <div id="goalLinkedTasks" class="goal-linked-tasks"></div>
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+              <button type="button" id="cancelGoalDetailsBtn" class="btn btn-ghost">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Goal Completion Modal -->
+      <div id="goalCompleteModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Goal completed">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Goal Complete</h2>
+            <button id="closeGoalCompleteBtn" class="btn-icon" title="Close">×</button>
+          </div>
+          <div class="modal-form" style="text-align: center;">
+            <p id="goalCompleteMessage" style="margin-top: 0;"></p>
+            <button type="button" id="goalCompleteOkBtn" class="btn btn-primary">Nice!</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Add Goal Modal -->
       <div id="addGoalModal" class="modal hidden">
         <div class="modal-overlay"></div>
@@ -1032,8 +1262,12 @@
   </div>
 
   <script src="script.js"></script>
+  <script src="js/modules/toast.js"></script>
+  <script src="js/utils/confetti.js"></script>
+  <script src="js/modules/celebrations.js"></script>
   <script src="js/modules/keyboard-shortcuts.js"></script>
   <script src="js/modules/notifications.js"></script>
+  <script src="js/modules/calendar-export.js"></script>
   <script src="js/modules/onboarding-tour.js"></script>
   <script src="dashboard.js"></script>
 </body>
