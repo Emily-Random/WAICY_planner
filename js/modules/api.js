@@ -1,5 +1,6 @@
 // API Client
 import { toast } from "../components/toast.js";
+import { offlineQueue } from "./offline-queue.js";
 
 const STORAGE_KEY = "planwise_auth_token";
 const STORAGE_USER_KEY = "planwise_user";
@@ -48,6 +49,27 @@ export class Api {
       }
     }
 
+    // Check if offline and this is a POST/PUT/DELETE request
+    const isOffline = !navigator.onLine;
+    const isModifyingRequest = options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method);
+
+    if (isOffline && isModifyingRequest && !options.skipQueue) {
+      // Queue the request for later
+      const queueId = offlineQueue.enqueue(endpoint, {
+        method: options.method,
+        body: options.body,
+        headers: this.getHeaders(),
+      });
+      
+      if (!options.silent) {
+        toast.info("You're offline. This action will be synced when you're back online.");
+      }
+      
+      // Return immediately with queued status
+      // The app should handle this gracefully (e.g., reload data after sync)
+      return Promise.resolve({ queued: true, queueId });
+    }
+
     try {
       const res = await fetch(endpoint, {
         headers: this.getHeaders(),
@@ -70,6 +92,21 @@ export class Api {
 
       return await res.json();
     } catch (err) {
+      // If network error and we're offline, queue it
+      if (isOffline && isModifyingRequest && !options.skipQueue) {
+        const queueId = offlineQueue.enqueue(endpoint, {
+          method: options.method,
+          body: options.body,
+          headers: this.getHeaders(),
+        });
+        
+        if (!options.silent) {
+          toast.info("You're offline. This action will be synced when you're back online.");
+        }
+        
+        return { queued: true, queueId };
+      }
+
       console.error(`API Error (${endpoint}):`, err);
       if (!options.silent) {
         toast.error(err.message || "Network error occurred");
