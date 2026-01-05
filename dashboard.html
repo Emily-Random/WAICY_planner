@@ -19,11 +19,12 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>Axis - Dashboard</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
   <div id="app">
     <!-- Main Dashboard -->
     <div id="dashboard" class="dashboard">
@@ -74,30 +75,30 @@
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
           </button>
-          <button id="logoutBtn" class="btn-icon" title="Logout">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+          <button id="logoutBtn" class="btn-icon" title="Logout" aria-label="Log out">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M9 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h5M13 7l4 4-4 4M17 11H7"/>
             </svg>
           </button>
         </div>
       </header>
 
-      <main class="app-main">
+      <main class="app-main" id="main-content">
       <!-- Left Sidebar -->
       <aside class="sidebar">
         <!-- Goals Section -->
-        <section class="panel panel-goals">
+        <section class="panel panel-goals" aria-labelledby="goals-heading">
           <div class="panel-header">
             <div class="panel-header-row">
               <div>
-            <h2>Goals Hierarchy</h2>
+            <h2 id="goals-heading">Goals Hierarchy</h2>
             <span class="panel-subtitle">Your goals across different timeframes</span>
               </div>
               <button id="addGoalBtn" class="btn btn-secondary btn-sm">+ Add goal <span class="shortcut-hint-inline" aria-hidden="true">⌘G</span></button>
             </div>
           </div>
           <div class="goals-content">
-            <div id="goalsList" class="goals-list-hierarchy">
+            <div id="goalsList" class="goals-list-hierarchy" role="list" aria-label="Goals list">
               <!-- Goals populated by JS with hierarchy -->
             </div>
           </div>
@@ -191,16 +192,16 @@
           </div>
         </section>
 
-        <section class="panel panel-tasks">
+        <section class="panel panel-tasks" aria-labelledby="tasks-heading">
           <div class="panel-header">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
               <div>
-                <h2>To‑Do List</h2>
+                <h2 id="tasks-heading">To‑Do List</h2>
                 <span class="panel-subtitle">Ranked by urgency &amp; deadlines</span>
               </div>
               <div style="display: flex; gap: 8px; align-items: center;">
-                <button type="button" id="toggleMatrixBtn" class="btn btn-ghost btn-sm" title="Toggle Eisenhower Matrix view">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
+                <button type="button" id="toggleMatrixBtn" class="btn btn-ghost btn-sm" title="Toggle Eisenhower Matrix view" aria-label="Toggle between list and matrix view" aria-pressed="false">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                     <rect x="1" y="1" width="5" height="5" rx="1"/>
                     <rect x="8" y="1" width="5" height="5" rx="1"/>
                     <rect x="1" y="8" width="5" height="5" rx="1"/>
@@ -214,42 +215,42 @@
             </div>
           </div>
           <!-- Eisenhower Matrix View -->
-          <div id="eisenhowerMatrix" class="eisenhower-matrix hidden">
-            <div class="matrix-quadrant quadrant-urgent-important">
+          <div id="eisenhowerMatrix" class="eisenhower-matrix hidden" role="region" aria-label="Eisenhower Matrix">
+            <div class="matrix-quadrant quadrant-urgent-important" role="group" aria-label="Urgent and Important tasks">
               <div class="quadrant-header">
-                <span class="quadrant-icon">🔥</span>
+                <span class="quadrant-icon" aria-hidden="true">🔥</span>
                 <span class="quadrant-title">Do First</span>
                 <span class="quadrant-label">Urgent & Important</span>
               </div>
-              <div class="quadrant-tasks" data-priority="Urgent & Important"></div>
+              <div class="quadrant-tasks" data-priority="Urgent & Important" role="list" aria-label="Urgent and Important tasks"></div>
             </div>
-            <div class="matrix-quadrant quadrant-important-not-urgent">
+            <div class="matrix-quadrant quadrant-important-not-urgent" role="group" aria-label="Important but not urgent tasks">
               <div class="quadrant-header">
-                <span class="quadrant-icon">📅</span>
+                <span class="quadrant-icon" aria-hidden="true">📅</span>
                 <span class="quadrant-title">Schedule</span>
                 <span class="quadrant-label">Important, Not Urgent</span>
               </div>
-              <div class="quadrant-tasks" data-priority="Important, Not Urgent"></div>
+              <div class="quadrant-tasks" data-priority="Important, Not Urgent" role="list" aria-label="Important but not urgent tasks"></div>
             </div>
-            <div class="matrix-quadrant quadrant-urgent-not-important">
+            <div class="matrix-quadrant quadrant-urgent-not-important" role="group" aria-label="Urgent but not important tasks">
               <div class="quadrant-header">
-                <span class="quadrant-icon">📤</span>
+                <span class="quadrant-icon" aria-hidden="true">📤</span>
                 <span class="quadrant-title">Delegate</span>
                 <span class="quadrant-label">Urgent, Not Important</span>
               </div>
-              <div class="quadrant-tasks" data-priority="Urgent, Not Important"></div>
+              <div class="quadrant-tasks" data-priority="Urgent, Not Important" role="list" aria-label="Urgent but not important tasks"></div>
             </div>
-            <div class="matrix-quadrant quadrant-not-urgent-not-important">
+            <div class="matrix-quadrant quadrant-not-urgent-not-important" role="group" aria-label="Not urgent and not important tasks">
               <div class="quadrant-header">
-                <span class="quadrant-icon">🗑️</span>
+                <span class="quadrant-icon" aria-hidden="true">🗑️</span>
                 <span class="quadrant-title">Eliminate</span>
                 <span class="quadrant-label">Not Urgent & Not Important</span>
               </div>
-              <div class="quadrant-tasks" data-priority="Not Urgent & Not Important"></div>
+              <div class="quadrant-tasks" data-priority="Not Urgent & Not Important" role="list" aria-label="Not urgent and not important tasks"></div>
             </div>
           </div>
           <!-- List View -->
-          <div id="taskList" class="task-list">
+          <div id="taskList" class="task-list" role="list" aria-label="Task list">
             <!-- Tasks populated by JS -->
           </div>
         </section>
@@ -272,38 +273,40 @@
         </section>
 
         <!-- Chatbot -->
-        <section class="panel panel-chat">
+        <section class="panel panel-chat" aria-labelledby="chat-heading">
           <div class="panel-header">
-            <h2>Axis Assistant</h2>
+            <h2 id="chat-heading">Axis Assistant</h2>
             <span class="panel-subtitle">Ask for planning &amp; focus tips</span>
           </div>
-          <div id="chatWindow" class="chat-window">
+          <div id="chatWindow" class="chat-window" role="log" aria-label="Chat messages" aria-live="polite" aria-atomic="false">
             <!-- Chat messages -->
           </div>
-          <form id="chatForm" class="chat-input-row">
+          <form id="chatForm" class="chat-input-row" aria-label="Chat input form">
+            <label for="chatInput" class="sr-only">Type your message</label>
             <input
               type="text"
               id="chatInput"
               placeholder="Ask me anything about your schedule..."
               autocomplete="off"
+              aria-label="Chat message input"
             />
-            <button type="submit" class="btn btn-primary">Send</button>
+            <button type="submit" class="btn btn-primary" aria-label="Send message">Send</button>
           </form>
         </section>
       </aside>
 
       <!-- Middle: Calendar -->
-      <section class="calendar-section">
+      <section class="calendar-section" aria-labelledby="calendar-heading">
         <header class="calendar-header">
           <div class="calendar-title">
-            <h2>Your AI‑generated schedule</h2>
+            <h2 id="calendar-heading">Your AI‑generated schedule</h2>
             <span id="calendarSubtitle" class="calendar-subtitle">
               Once generated, your time‑blocked plan will appear here.
             </span>
           </div>
-          <div class="calendar-controls">
-            <button id="syncCalendarBtn" class="btn btn-secondary btn-sync" title="Sync daily goals to tasks and regenerate schedule">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+          <div class="calendar-controls" role="group" aria-label="Calendar view controls">
+            <button id="syncCalendarBtn" class="btn btn-secondary btn-sync" title="Sync daily goals to tasks and regenerate schedule" aria-label="Sync calendar and regenerate schedule">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;" aria-hidden="true">
                 <path d="M1 8v6h6M15 8V2H9M1 8l6-6M15 8l-6 6"/>
               </svg>
               Sync Calendar
@@ -330,7 +333,7 @@
           </div>
         </header>
 
-        <div id="calendarContainer" class="calendar-container">
+        <div id="calendarContainer" class="calendar-container" role="region" aria-label="Calendar view">
           <!-- Calendar rendered by JS -->
         </div>
       </section>
@@ -1261,6 +1264,9 @@
     </div>
   </div>
 
+  <script type="module" src="js/modules/service-worker-register.js"></script>
+  <script type="module" src="js/modules/offline-ui.js"></script>
+  <script type="module" src="js/modules/keyboard-nav.js"></script>
   <script src="script.js"></script>
   <script src="js/modules/toast.js"></script>
   <script src="js/utils/confetti.js"></script>

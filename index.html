@@ -19,11 +19,12 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>Axis - AI Student Planner</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
   <div id="app">
     <!-- Landing Page -->
     <div id="landingPage" class="landing-page">
@@ -53,7 +54,7 @@
         </nav>
       </header>
 
-      <main class="landing-main">
+      <main class="landing-main" id="main-content">
         <section class="hero-section" id="hero">
           <div class="hero-content">
             <div class="hero-logo">
@@ -248,6 +249,9 @@
     </div>
   </div>
 
+  <script type="module" src="js/modules/service-worker-register.js"></script>
+  <script type="module" src="js/modules/offline-ui.js"></script>
+  <script type="module" src="js/modules/keyboard-nav.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
