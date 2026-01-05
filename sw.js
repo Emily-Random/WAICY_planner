@@ -1,109 +1,186 @@
-// Service Worker for Axis Planner - Offline Support
-const CACHE_NAME = 'axis-planner-v1';
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/dashboard.html',
-  '/style.css',
-  '/script.js',
-  '/dashboard.js',
-  '/favicon.svg',
-  '/js/modules/api.js',
-  '/js/modules/state.js',
-  '/js/utils/helpers.js',
-  '/js/components/toast.js',
-  '/js/components/loading.js',
-  '/js/components/blocker.js',
+/* global self */
+
+const STATIC_CACHE = "axis-static-v1";
+const RUNTIME_CACHE = "axis-runtime-v1";
+const DB_NAME = "axis_pwa";
+const DB_VERSION = 1;
+
+const CORE_ASSETS = [
+  "index.html",
+  "dashboard.html",
+  "style.css",
+  "script.js",
+  "dashboard.js",
+  "manifest.json",
+  "favicon.svg",
+  "assets/axis-banner.svg",
+  "assets/illustrations/empty-calendar.svg",
+  "assets/illustrations/empty-goals.svg",
+  "assets/illustrations/empty-habits.svg",
+  "assets/illustrations/empty-reflections.svg",
+  "assets/illustrations/empty-tasks.svg",
+  "js/modules/toast.js",
+  "js/utils/confetti.js",
+  "js/modules/celebrations.js",
+  "js/modules/keyboard-shortcuts.js",
+  "js/modules/notifications.js",
+  "js/modules/calendar-export.js",
+  "js/modules/onboarding-tour.js"
 ];
 
-// Install event - cache static assets
-self.addEventListener('install', (event) => {
+function openDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains("kv")) {
+        db.createObjectStore("kv", { keyPath: "key" });
+      }
+      if (!db.objectStoreNames.contains("queue")) {
+        db.createObjectStore("queue", { keyPath: "id", autoIncrement: true });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbGetAll(storeName) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readonly");
+    const store = tx.objectStore(storeName);
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbDelete(storeName, key) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    const req = store.delete(key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function flushQueue() {
+  const items = await idbGetAll("queue");
+  if (!items.length) return;
+
+  // Process in order; stop on first failure to retry later.
+  const ordered = items.slice().sort((a, b) => (a.id || 0) - (b.id || 0));
+  for (const item of ordered) {
+    if (!item || !item.url || !item.method) {
+      if (item?.id != null) await idbDelete("queue", item.id);
+      continue;
+    }
+
+    const res = await fetch(item.url, {
+      method: item.method,
+      headers: item.headers || {},
+      body: item.body,
+    });
+
+    if (!res.ok) {
+      throw new Error(`Sync failed (${res.status})`);
+    }
+
+    await idbDelete("queue", item.id);
+  }
+}
+
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(STATIC_ASSETS.map(url => new Request(url, { cache: 'reload' })))
-          .catch((err) => {
-            console.warn('Service Worker: Some assets failed to cache:', err);
-            // Continue even if some assets fail
-            return Promise.resolve();
-          });
-      })
+    (async () => {
+      const cache = await caches.open(STATIC_CACHE);
+      await cache.addAll(CORE_ASSETS);
+      await self.skipWaiting();
+    })(),
   );
-  self.skipWaiting();
 });
 
-// Activate event - clean up old caches
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys.map((key) => {
+          if (![STATIC_CACHE, RUNTIME_CACHE].includes(key)) {
+            return caches.delete(key);
+          }
+          return null;
+        }),
       );
-    })
+      await self.clients.claim();
+    })(),
   );
-  return self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  const url = new URL(req.url);
 
-  // Skip non-GET requests
-  if (request.method !== 'GET') {
-    return;
-  }
+  // Only handle same-origin.
+  if (url.origin !== self.location.origin) return;
 
-  // Skip API requests (these will be handled by offline queue)
-  if (url.pathname.startsWith('/api/')) {
-    return;
-  }
-
-  // Skip chrome-extension and other protocols
-  if (!url.protocol.startsWith('http')) {
-    return;
-  }
-
-  event.respondWith(
-    caches.match(request)
-      .then((cachedResponse) => {
-        // Return cached version if available
-        if (cachedResponse) {
-          return cachedResponse;
+  // Navigation: network-first, fallback to cache.
+  if (req.mode === "navigate") {
+    event.respondWith(
+      (async () => {
+        try {
+          const res = await fetch(req);
+          const cache = await caches.open(STATIC_CACHE);
+          cache.put(req, res.clone());
+          return res;
+        } catch {
+          const cached = await caches.match(req);
+          if (cached) return cached;
+          return caches.match("index.html");
         }
+      })(),
+    );
+    return;
+  }
 
-        // Otherwise, fetch from network
-        return fetch(request)
-          .then((response) => {
-            // Don't cache non-successful responses
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
+  // Cache-first for static assets.
+  if (req.method === "GET" && !url.pathname.startsWith("/api/")) {
+    event.respondWith(
+      (async () => {
+        const cached = await caches.match(req);
+        if (cached) return cached;
+        const res = await fetch(req);
+        const cache = await caches.open(STATIC_CACHE);
+        cache.put(req, res.clone());
+        return res;
+      })(),
+    );
+    return;
+  }
 
-            // Clone the response for caching
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, responseToCache);
-            });
-
-            return response;
-          })
-          .catch(() => {
-            // Network request failed - return offline page if available
-            if (request.destination === 'document') {
-              return caches.match('/index.html');
-            }
-          });
-      })
-  );
+  // Network-first for API GETs with cache fallback.
+  if (req.method === "GET" && url.pathname.startsWith("/api/")) {
+    event.respondWith(
+      (async () => {
+        try {
+          const res = await fetch(req);
+          const cache = await caches.open(RUNTIME_CACHE);
+          cache.put(req, res.clone());
+          return res;
+        } catch {
+          return caches.match(req);
+        }
+      })(),
+    );
+  }
 });
 
-// Message handler for cache updates
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
+self.addEventListener("sync", (event) => {
+  if (event.tag === "axis-sync") {
+    event.waitUntil(flushQueue());
   }
 });
 

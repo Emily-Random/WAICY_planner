@@ -52,4 +52,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   initDashboard();
+  window.AxisNotifications?.init?.();
+  window.AxisOnboardingTour?.maybeStart?.();
 });

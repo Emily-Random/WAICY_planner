@@ -14,7 +14,9 @@
       } catch {}
     })();
   </script>
+  <meta name="theme-color" content="#10b981" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="manifest" href="manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -34,6 +36,30 @@
           <span class="logo-text-dashboard">Dashboard</span>
         </div>
         <div class="header-actions">
+          <button id="commandPaletteBtn" type="button" class="btn-icon command-palette-btn" title="Search (Ctrl/Cmd+K)" aria-label="Open command palette">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="M21 21l-4.3-4.3"></path>
+            </svg>
+            <span class="shortcut-hint" aria-hidden="true">⌘K</span>
+          </button>
+          <div class="notification-wrapper">
+            <button id="notificationBtn" type="button" class="btn-icon notification-btn" title="Notifications" aria-label="Notifications">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 7h18s-3 0-3-7"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              <span id="notificationBadge" class="notification-badge hidden" aria-hidden="true">0</span>
+            </button>
+            <div id="notificationDropdown" class="notification-dropdown hidden" role="menu" aria-label="Notifications">
+              <div class="notification-dropdown-header">
+                <span>Notifications</span>
+                <button type="button" id="clearNotificationsBtn" class="btn btn-ghost btn-sm">Clear</button>
+              </div>
+              <div id="notificationList" class="notification-list"></div>
+            </div>
+          </div>
+          <div id="offlineIndicator" class="offline-indicator hidden" role="status" aria-live="polite">Offline</div>
           <button type="button" class="btn-icon theme-toggle" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">
             <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/>
@@ -43,10 +69,10 @@
               <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
             </svg>
           </button>
-          <button id="settingsBtn" class="btn-icon" title="Settings" aria-label="Open settings" aria-haspopup="true">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <circle cx="10" cy="10" r="3"/>
-              <path d="M10 1v4M10 15v4M19 10h-4M5 10H1M16.66 3.34l-2.83 2.83M6.17 13.83l-2.83 2.83M16.66 16.66l-2.83-2.83M6.17 6.17L3.34 3.34"/>
+          <button id="settingsBtn" class="btn-icon" title="Settings">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
           </button>
           <button id="logoutBtn" class="btn-icon" title="Logout" aria-label="Log out">
@@ -68,7 +94,7 @@
             <h2 id="goals-heading">Goals Hierarchy</h2>
             <span class="panel-subtitle">Your goals across different timeframes</span>
               </div>
-              <button id="addGoalBtn" class="btn btn-secondary btn-sm" aria-label="Add a new goal">+ Add goal</button>
+              <button id="addGoalBtn" class="btn btn-secondary btn-sm">+ Add goal <span class="shortcut-hint-inline" aria-hidden="true">⌘G</span></button>
             </div>
           </div>
           <div class="goals-content">
@@ -131,6 +157,37 @@
                   <div class="score-label" id="scoreLabel">Getting Started</div>
                 </div>
               </div>
+              <div class="analytics-section">
+                <h4>Focus Heatmap</h4>
+                <div id="focusHeatmap" class="focus-heatmap"></div>
+              </div>
+              <div class="analytics-section">
+                <h4>Completion Trends</h4>
+                <div id="completionTrends" class="completion-trends"></div>
+              </div>
+              <div class="analytics-section">
+                <h4>Procrastination Patterns</h4>
+                <div id="procrastinationPatterns" class="procrastination-patterns"></div>
+              </div>
+              <div class="analytics-section">
+                <h4>Category Time Allocation</h4>
+                <div id="categoryAllocation" class="category-allocation"></div>
+              </div>
+              <div class="analytics-section">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                  <h4 style="margin: 0;">Weekly Insights</h4>
+                  <div style="display: inline-flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" id="generateWeeklyInsightsBtn" class="btn btn-secondary btn-sm">Generate</button>
+                    <button type="button" id="exportInsightsPdfBtn" class="btn btn-ghost btn-sm">Export PDF</button>
+                    <button type="button" id="exportInsightsPngBtn" class="btn btn-ghost btn-sm">Export PNG</button>
+                  </div>
+                </div>
+                <div id="weeklyInsights" class="weekly-insights"></div>
+              </div>
+              <div class="analytics-section">
+                <h4>Goals Timeline</h4>
+                <div id="goalsTimeline" class="goals-timeline"></div>
+              </div>
             </div>
           </div>
         </section>
@@ -151,8 +208,8 @@
                     <rect x="8" y="8" width="5" height="5" rx="1"/>
                   </svg>
                 </button>
-                <button type="button" id="addTaskBtn" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.75rem;" title="Add new task" aria-label="Add a new task">
-                  + Add Task
+                <button type="button" id="addTaskBtn" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.75rem;" title="Add new task">
+                  + Add Task <span class="shortcut-hint-inline" aria-hidden="true">⌘N</span>
                 </button>
               </div>
             </div>
@@ -254,9 +311,25 @@
               </svg>
               Sync Calendar
             </button>
-            <button class="btn-toggle-view active" data-view="daily" aria-label="View daily schedule" aria-pressed="true">Daily</button>
-            <button class="btn-toggle-view" data-view="weekly" aria-label="View weekly schedule" aria-pressed="false">Weekly</button>
-            <button class="btn-toggle-view" data-view="monthly" aria-label="View monthly schedule" aria-pressed="false">Monthly</button>
+            <button id="rebalanceWeekBtn" class="btn btn-secondary btn-sync" title="Rebalance your schedule for the week">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                <path d="M8 1a7 7 0 1 0 7 7"/>
+                <path d="M13.5 3.5v4h-4"/>
+              </svg>
+              Rebalance Week
+            </button>
+            <button id="calendarExportBtn" class="btn btn-secondary btn-sync" title="Export schedule to iCal/Google" aria-label="Export schedule">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;" aria-hidden="true">
+                <path d="M8 2v7"/>
+                <path d="M5 6l3 3 3-3"/>
+                <path d="M2 13h12"/>
+              </svg>
+              Export
+              <span id="calendarExportBadge" class="calendar-export-badge hidden" aria-hidden="true"></span>
+            </button>
+            <button class="btn-toggle-view active" data-view="daily">Daily</button>
+            <button class="btn-toggle-view" data-view="weekly">Weekly</button>
+            <button class="btn-toggle-view" data-view="monthly">Monthly</button>
           </div>
         </header>
 
@@ -550,6 +623,8 @@
             <button class="settings-tab" data-tab="account">Account</button>
             <button class="settings-tab" data-tab="goals">Goals</button>
             <button class="settings-tab" data-tab="blocking">Focus & Blocking</button>
+            <button class="settings-tab" data-tab="notifications">Notifications</button>
+            <button class="settings-tab" data-tab="experience">Experience</button>
             <button class="settings-tab" data-tab="reflections">Reflections</button>
             <button class="settings-tab" data-tab="data">Data</button>
           </div>
@@ -643,6 +718,86 @@
               <button id="addBlockingRuleBtn" class="btn btn-secondary">+ Add Rule</button>
               <button id="addCommonRulesBtn" class="btn btn-ghost">Add Common Sites</button>
             </div>
+          </div>
+
+          <!-- Notifications Settings -->
+          <div id="settingsNotifications" class="settings-section">
+            <h3>Notifications</h3>
+            <p class="settings-description">
+              Choose what Axis should remind you about while this tab is open. Browser notifications require permission.
+            </p>
+
+            <div class="notification-settings">
+              <label class="toggle-row">
+                <input type="checkbox" id="notifBrowserEnabled" />
+                <span>Enable browser notifications</span>
+              </label>
+
+              <div class="notification-settings-grid">
+                <label class="toggle-row">
+                  <input type="checkbox" id="notifDeadlines" />
+                  <span>Task deadlines (1 hour / 15 min before)</span>
+                </label>
+                <label class="toggle-row">
+                  <input type="checkbox" id="notifSchedule" />
+                  <span>Schedule block starting</span>
+                </label>
+                <label class="toggle-row">
+                  <input type="checkbox" id="notifHabits" />
+                  <span>Daily habit reminders</span>
+                </label>
+                <label class="toggle-row">
+                  <input type="checkbox" id="notifFocus" />
+                  <span>Focus timer completion</span>
+                </label>
+                <label class="toggle-row">
+                  <input type="checkbox" id="notifReflections" />
+                  <span>Weekly reflection due</span>
+                </label>
+              </div>
+
+              <div style="display: flex; gap: 12px; align-items: center; margin-top: 16px; flex-wrap: wrap;">
+                <button type="button" id="requestNotificationPermissionBtn" class="btn btn-secondary btn-sm">
+                  Request Permission
+                </button>
+                <span id="notifPermissionStatus" class="settings-description" style="margin: 0;">Permission: —</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Experience Settings -->
+          <div id="settingsExperience" class="settings-section">
+            <h3>Experience</h3>
+            <p class="settings-description">
+              Customize celebrations and motion. If you prefer less animation, enable “Reduce motion” in your OS settings.
+            </p>
+            <div class="notification-settings-grid">
+              <label class="toggle-row">
+                <input type="checkbox" id="celebrationsEnabled" />
+                <span>Enable task celebrations</span>
+              </label>
+              <label class="toggle-row">
+                <input type="checkbox" id="celebrationsSounds" />
+                <span>Sound effects (optional)</span>
+              </label>
+              <label class="toggle-row">
+                <input type="checkbox" id="celebrationsStreaks" />
+                <span>Streak celebrations (3+ tasks)</span>
+              </label>
+            </div>
+            <div style="margin-top: 18px;">
+              <h4 style="margin: 0 0 10px;">Achievements</h4>
+              <div id="achievementBadges" class="achievement-badges"></div>
+            </div>
+
+            <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border-subtle);">
+
+            <h3>Install</h3>
+            <p class="settings-description">
+              Install Axis as an app for faster launch and offline access (supported browsers only).
+            </p>
+            <button type="button" id="installAppBtn" class="btn btn-secondary btn-sm hidden">Install Axis</button>
+            <div id="installAppStatus" class="settings-description" style="margin: 10px 0 0;">Status: —</div>
           </div>
 
           <!-- Reflections Settings -->
@@ -749,6 +904,45 @@
         </div>
       </div>
 
+      <!-- Command Palette -->
+      <div id="commandPaletteModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Command palette">
+        <div class="modal-overlay"></div>
+        <div class="modal-content command-palette-content">
+          <div class="command-palette-input-row">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="M21 21l-4.3-4.3"></path>
+            </svg>
+            <input id="commandPaletteInput" type="text" placeholder="Search tasks, goals, habits..." autocomplete="off" />
+            <span class="command-palette-kbd" aria-hidden="true">Esc</span>
+          </div>
+          <div id="commandPaletteList" class="command-palette-list"></div>
+          <div class="command-palette-footer">
+            <span class="command-palette-footer-hint">↑↓ to navigate · Enter to select · Esc to close</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shortcuts Help Modal -->
+      <div id="shortcutsHelpModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-content-large">
+          <div class="modal-header">
+            <h2>Keyboard Shortcuts</h2>
+            <button id="closeShortcutsHelpBtn" class="btn-icon" title="Close">×</button>
+          </div>
+          <div class="shortcuts-grid">
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd></span><span class="shortcut-desc">Command palette</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>N</kbd></span><span class="shortcut-desc">New task</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>G</kbd></span><span class="shortcut-desc">New goal</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>/</kbd></span><span class="shortcut-desc">Show shortcuts</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>Esc</kbd></span><span class="shortcut-desc">Close open modal</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>T</kbd></span><span class="shortcut-desc">Toggle theme</span></div>
+            <div class="shortcut-row"><span class="shortcut-keys"><kbd>F</kbd></span><span class="shortcut-desc">Start focus timer for selected task</span></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Task Editor Modal -->
       <div id="taskEditorModal" class="modal hidden">
         <div class="modal-overlay"></div>
@@ -761,6 +955,19 @@
             <div class="form-group">
               <label for="taskEditor_name">Task description</label>
               <input type="text" id="taskEditor_name" required />
+            </div>
+
+            <div class="form-group">
+              <label for="taskTemplateSelect">Template (optional)</label>
+              <div class="template-row">
+                <select id="taskTemplateSelect">
+                  <option value="">No template</option>
+                </select>
+                <button type="button" id="saveTaskAsTemplateBtn" class="btn btn-ghost btn-sm" title="Save current fields as a template">
+                  Save as template
+                </button>
+              </div>
+              <small class="form-hint">Templates can pre-fill category, priority, duration, and recurrence.</small>
             </div>
 
             <div class="form-group">
@@ -847,6 +1054,137 @@
         </div>
       </div>
 
+      <!-- Smart Rescheduling Modal -->
+      <div id="smartRescheduleModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Smart rescheduling">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-content-large">
+          <div class="modal-header">
+            <h2>Smart Rescheduling</h2>
+            <button id="closeSmartRescheduleBtn" class="btn-icon" title="Close">×</button>
+          </div>
+          <div class="modal-form">
+            <p class="settings-description" style="margin-top: 0;">
+              Review overdue tasks, split large work into manageable chunks, or rebalance your week.
+            </p>
+            <div id="smartRescheduleList" class="smart-reschedule-list"></div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap;">
+              <button type="button" id="smartRescheduleLocalBtn" class="btn btn-secondary">Rebalance Locally</button>
+              <button type="button" id="smartRescheduleAiBtn" class="btn btn-primary">Rebalance with AI</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar Export Modal -->
+      <div id="calendarExportModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Calendar export">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-content-large">
+          <div class="modal-header">
+            <h2>Calendar Export</h2>
+            <button id="closeCalendarExportBtn" class="btn-icon" title="Close">×</button>
+          </div>
+          <div class="modal-form">
+            <p class="settings-description" style="margin-top: 0;">
+              Download a `.ics` file, or subscribe so your calendar stays up to date.
+            </p>
+
+            <div class="calendar-export-actions">
+              <button type="button" id="downloadIcsBtn" class="btn btn-primary">Download .ics</button>
+              <button type="button" id="copyWebcalBtn" class="btn btn-secondary">Copy webcal URL</button>
+              <button type="button" id="googleCalendarBtn" class="btn btn-ghost">Google Calendar</button>
+            </div>
+
+            <div id="calendarExportLast" class="settings-description" style="margin: 12px 0 0;">
+              Last export: —
+            </div>
+
+            <hr style="margin: 18px 0; border: none; border-top: 1px solid var(--border-subtle);">
+
+            <h4 style="margin: 0 0 10px;">Export settings</h4>
+            <div class="notification-settings-grid">
+              <label class="toggle-row">
+                <input type="checkbox" id="exportIncludeFixedBlocks" />
+                <span>Include fixed blocks</span>
+              </label>
+              <label class="toggle-row">
+                <input type="checkbox" id="exportIncludeCompletedTasks" />
+                <span>Include completed tasks</span>
+              </label>
+            </div>
+            <div class="form-group" style="margin-top: 12px;">
+              <label for="exportReminderMinutes">Default reminder (minutes)</label>
+              <input type="number" id="exportReminderMinutes" min="0" step="5" />
+              <small class="form-hint">Set to 0 to disable event reminders.</small>
+            </div>
+            <div id="calendarExportHelp" class="settings-description" style="margin: 10px 0 0;">
+              Tip: If you open Google Calendar, Axis will copy the subscription URL for you.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Goal Details Modal -->
+      <div id="goalDetailsModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Goal details">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-content-large">
+          <div class="modal-header">
+            <h2 id="goalDetailsTitle">Goal Progress</h2>
+            <button id="closeGoalDetailsBtn" class="btn-icon" title="Close">×</button>
+          </div>
+          <form id="goalDetailsForm" class="modal-form">
+            <input type="hidden" id="goalDetailsId" />
+            <div class="form-group">
+              <label>Progress</label>
+              <div class="goal-progress-editor">
+                <input type="range" id="goalManualProgress" min="0" max="100" step="1" />
+                <div class="goal-progress-editor-meta">
+                  <span id="goalProgressValue">0%</span>
+                  <span id="goalProgressMode" class="task-badge">Manual</span>
+                </div>
+              </div>
+              <small class="form-hint" id="goalProgressHint">Manual progress is available when a goal has no linked tasks.</small>
+            </div>
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label for="goalStartDate">Start date</label>
+                <input type="date" id="goalStartDate" />
+              </div>
+              <div>
+                <label for="goalEndDate">End date</label>
+                <input type="date" id="goalEndDate" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="goalMilestones">Milestones (percent, comma separated)</label>
+              <input type="text" id="goalMilestones" placeholder="e.g., 25,50,75" />
+            </div>
+            <div class="form-group">
+              <label>Linked tasks</label>
+              <div id="goalLinkedTasks" class="goal-linked-tasks"></div>
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+              <button type="button" id="cancelGoalDetailsBtn" class="btn btn-ghost">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Goal Completion Modal -->
+      <div id="goalCompleteModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Goal completed">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Goal Complete</h2>
+            <button id="closeGoalCompleteBtn" class="btn-icon" title="Close">×</button>
+          </div>
+          <div class="modal-form" style="text-align: center;">
+            <p id="goalCompleteMessage" style="margin-top: 0;"></p>
+            <button type="button" id="goalCompleteOkBtn" class="btn btn-primary">Nice!</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Add Goal Modal -->
       <div id="addGoalModal" class="modal hidden">
         <div class="modal-overlay"></div>
@@ -930,6 +1268,13 @@
   <script type="module" src="js/modules/offline-ui.js"></script>
   <script type="module" src="js/modules/keyboard-nav.js"></script>
   <script src="script.js"></script>
+  <script src="js/modules/toast.js"></script>
+  <script src="js/utils/confetti.js"></script>
+  <script src="js/modules/celebrations.js"></script>
+  <script src="js/modules/keyboard-shortcuts.js"></script>
+  <script src="js/modules/notifications.js"></script>
+  <script src="js/modules/calendar-export.js"></script>
+  <script src="js/modules/onboarding-tour.js"></script>
   <script src="dashboard.js"></script>
 </body>
 </html>
