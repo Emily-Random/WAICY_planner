@@ -89,6 +89,12 @@ export class LoadingManager {
         animation: skeleton-shimmer 1.5s ease-in-out infinite;
         border-radius: 4px;
       }
+      @media (prefers-color-scheme: dark) {
+        .skeleton {
+          background: linear-gradient(90deg, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.08) 75%);
+          background-size: 200% 100%;
+        }
+      }
       @keyframes skeleton-shimmer {
         0% { background-position: 200% 0; }
         100% { background-position: -200% 0; }
@@ -105,6 +111,48 @@ export class LoadingManager {
       .skeleton-box {
         height: 60px;
         margin-bottom: 12px;
+      }
+      .skeleton-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+      }
+      .skeleton-card {
+        padding: 16px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        background: var(--crystal-bg);
+        border: 1px solid var(--crystal-border);
+      }
+      .skeleton-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .skeleton-line {
+        height: 12px;
+        border-radius: 6px;
+        margin-bottom: 8px;
+      }
+      .skeleton-line:last-child {
+        width: 60%;
+      }
+      .skeleton-panel {
+        padding: 16px;
+        border-radius: var(--radius-lg);
+        background: var(--crystal-bg);
+        border: 1px solid var(--crystal-border);
+        margin-bottom: 16px;
+      }
+      .skeleton-list-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        background: var(--surface-inset);
       }
       
       /* Empty states */
@@ -276,6 +324,69 @@ export class LoadingManager {
       fragment.appendChild(div);
     }
     return fragment;
+  }
+
+  // Create skeleton card (for task items, panels, etc.)
+  createSkeletonCard(lines = 3) {
+    const card = document.createElement("div");
+    card.className = "skeleton-card";
+    const fragment = document.createDocumentFragment();
+    
+    // Header with circle and lines
+    const header = document.createElement("div");
+    header.className = "skeleton-header";
+    header.innerHTML = `
+      <div class="skeleton skeleton-circle"></div>
+      <div style="flex: 1;">
+        <div class="skeleton skeleton-line"></div>
+        <div class="skeleton skeleton-line" style="width: 70%;"></div>
+      </div>
+    `;
+    fragment.appendChild(header);
+    
+    // Body lines
+    for (let i = 0; i < lines; i++) {
+      const line = document.createElement("div");
+      line.className = "skeleton skeleton-line";
+      if (i === lines - 1) {
+        line.style.width = "60%";
+      }
+      fragment.appendChild(line);
+    }
+    
+    card.appendChild(fragment);
+    return card;
+  }
+
+  // Create skeleton panel
+  createSkeletonPanel(itemCount = 3) {
+    const panel = document.createElement("div");
+    panel.className = "skeleton-panel";
+    
+    // Panel header
+    const header = document.createElement("div");
+    header.style.marginBottom = "16px";
+    header.innerHTML = `
+      <div class="skeleton skeleton-line" style="width: 40%; height: 20px; margin-bottom: 8px;"></div>
+      <div class="skeleton skeleton-line" style="width: 60%; height: 12px;"></div>
+    `;
+    panel.appendChild(header);
+    
+    // Panel items
+    for (let i = 0; i < itemCount; i++) {
+      const item = document.createElement("div");
+      item.className = "skeleton-list-item";
+      item.innerHTML = `
+        <div class="skeleton skeleton-circle" style="width: 32px; height: 32px;"></div>
+        <div style="flex: 1;">
+          <div class="skeleton skeleton-line" style="width: ${80 + Math.random() * 20}%;"></div>
+          <div class="skeleton skeleton-line" style="width: ${50 + Math.random() * 20}%; height: 10px; margin-top: 6px;"></div>
+        </div>
+      `;
+      panel.appendChild(item);
+    }
+    
+    return panel;
   }
 
   // Create empty state
