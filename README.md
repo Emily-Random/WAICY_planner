@@ -40,19 +40,30 @@ Axis is a web-based student planning application that generates a personalized, 
 
 ## Tech Stack
 
-- HTML
-- CSS
-- Vanilla JavaScript
-
-The application runs entirely in the browser with no backend or server dependency.
+- Frontend: HTML, CSS, Vanilla JavaScript
+- Backend: Node.js + Express (auth, persistence, AI endpoints)
 
 ## How to Run
 
-- Clone or download the repository
+- Install dependencies:
+  - `npm install`
 
-- Open index.html in a modern web browser
+- Configure environment variables:
+  - Copy `.env.example` → `.env`
+  - Set `JWT_SECRET` and your `DEEPSEEK_API_KEY`
 
-- No installation or configuration required
+- Start the server:
+  - `npm run dev`
+
+- Open:
+  - `http://localhost:3000`
+
+## MCP (Optional)
+
+Axis includes an MCP server (`mcp-server.mjs`) that exposes tools for reading/updating a user's tasks and habits in `user_data/`.
+
+- Copy `mcp.json.example` to your MCP client's config and set `AXIS_MCP_USER_ID`
+- Or run directly: `AXIS_MCP_USER_ID=... npm run mcp`
 
 ## Future Improvements
 

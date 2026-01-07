@@ -8097,7 +8097,7 @@ function initChatbot() {
 
   function initialMessage() {
     addMessage(
-      "Hi! I’m your Axis assistant. Tell me how you’re feeling about your workload or ask for help with prioritizing, focus, or breaks.",
+      "Hi! I’m your Axis assistant. I can help plan your day — and I can also add/complete tasks and manage daily habits if you ask.",
       "bot",
     );
   }
@@ -8126,16 +8126,36 @@ function initChatbot() {
 async function generateChatReply(text) {
   const name = state.profile?.user_name || "friend";
 
-  // Try backend /api/chat first
+  const token = getAuthToken();
+
+  // Guest/no-auth mode: use plain chat (no state mutation).
+  if (!token || token.startsWith("guest_")) {
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          context: `User: ${name}. Current schedule has ${state.tasks?.length || 0} tasks.`,
+        }),
+      });
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const data = await res.json();
+      if (data && typeof data.reply === "string") return data.reply;
+      throw new Error("No reply field in API response");
+    } catch (err) {
+      console.warn("Chat API failed (guest mode), using local rule-based answers instead.", err);
+      return fallbackRuleBasedReply(text);
+    }
+  }
+
+  // Authenticated mode: try agentic backend /api/assistant first
   try {
-    const res = await fetch("/api/chat", {
+    const res = await fetch("/api/assistant", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         message: text,
-        context: `User: ${name}. Current schedule has ${state.tasks?.length || 0} tasks.`,
       }),
     });
 
@@ -8145,13 +8165,61 @@ async function generateChatReply(text) {
       console.error("Chat API error:", errorMsg, errorData);
       
       // Show user-friendly error message for common issues
-      if (res.status === 401 || res.status === 500) {
-        return `⚠️ API Configuration Issue: ${errorMsg}. Please check your DeepSeek API key in the .env file and restart the server. For now, I'll use a basic response: ${fallbackRuleBasedReply(text)}`;
+      if (res.status === 401 || res.status === 403) {
+        return `⚠️ Authentication Issue: ${errorMsg}. Please log in again. For now: ${fallbackRuleBasedReply(text)}`;
+      }
+      if (res.status === 500) {
+        // Fall back to non-agentic chat if the assistant endpoint fails.
+        try {
+          const chatRes = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: text,
+              context: `User: ${name}. Current schedule has ${state.tasks?.length || 0} tasks.`,
+            }),
+          });
+          if (chatRes.ok) {
+            const chatData = await chatRes.json();
+            if (typeof chatData.reply === "string") return chatData.reply;
+          }
+        } catch {}
+        return `⚠️ Assistant Issue: ${errorMsg}. Please check your server logs and AI API key configuration. For now: ${fallbackRuleBasedReply(text)}`;
       }
       
       throw new Error(errorMsg);
     }
     const data = await res.json();
+    if (data?.data && typeof data.data === "object") {
+      const d = data.data;
+      state = {
+        profile: d.profile || null,
+        tasks: d.tasks || [],
+        rankedTasks: d.rankedTasks || [],
+        schedule: d.schedule || [],
+        fixedBlocks: d.fixedBlocks || [],
+        goals: d.goals || [],
+        reflections: d.reflections || [],
+        blockingRules: d.blockingRules || [],
+        dailyHabits: d.dailyHabits || [],
+        focusSessions: d.focusSessions || [],
+        weeklyInsights: d.weeklyInsights || null,
+        achievements: d.achievements || {},
+        taskTemplates: d.taskTemplates || [],
+        calendarExportSettings: d.calendarExportSettings || null,
+        firstReflectionDueDate: d.firstReflectionDueDate || null,
+      };
+
+      migrateProfileData();
+      migrateGoalsData();
+      normalizeGoalsProgressInState();
+      ensureTaskIds();
+      normalizeAllTasksInState();
+      ensureTaskOrder();
+      ensureTaskTemplates();
+      restoreFromState();
+    }
+
     if (data && typeof data.reply === "string") {
       return data.reply;
     }

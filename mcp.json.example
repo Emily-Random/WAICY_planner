@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "axis": {
+      "command": "node",
+      "args": ["mcp-server.mjs"],
+      "env": {
+        "AXIS_MCP_USER_ID": "user_1234567890_example"
+      }
+    }
+  }
+}

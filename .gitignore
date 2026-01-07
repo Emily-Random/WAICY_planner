@@ -21,6 +21,9 @@ server.log
 user_data/
 users.json
 
+# MCP local config
+mcp.json
+
 # IDE
 .vscode/
 .idea/

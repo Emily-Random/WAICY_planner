@@ -251,6 +251,450 @@ async function callDeepSeek({
   return reply.trim();
 }
 
+async function generateAiRescheduleBlocks({
+  tasks = [],
+  fixedBlocks = [],
+  schedule = [],
+  profile = {},
+  horizonDays = 7,
+  maxHoursPerDay = 10,
+}) {
+  const tasksBrief = ensureArray(tasks)
+    .filter((t) => t && typeof t === "object" && typeof t.id === "string")
+    .filter((t) => !t.completed)
+    .slice(0, 350)
+    .map((t) => ({
+      id: t.id,
+      name: String(t.task_name || "").slice(0, 140),
+      priority: String(t.task_priority || ""),
+      category: String(t.task_category || ""),
+      deadline: `${t.task_deadline || ""}T${t.task_deadline_time || "23:59"}`,
+      durationHours: Number(t.task_duration_hours || 0) || 0,
+    }));
+
+  const fixedBrief = ensureArray(fixedBlocks)
+    .filter((b) => b && typeof b === "object" && b.start && b.end)
+    .slice(0, 500)
+    .map((b) => ({
+      start: b.start,
+      end: b.end,
+      label: String(b.label || b.kind || "Fixed").slice(0, 80),
+      category: String(b.category || ""),
+    }));
+
+  const scheduleBrief = ensureArray(schedule)
+    .filter((b) => b && typeof b === "object" && b.start && b.end)
+    .slice(0, 500)
+    .map((b) => ({
+      taskId: b.taskId || "",
+      start: b.start,
+      end: b.end,
+    }));
+
+  const profileBrief = (() => {
+    if (!profile || typeof profile !== "object") return {};
+    const keep = [
+      "procrastinator_type",
+      "preferred_work_style",
+      "preferred_study_method",
+      "most_productive_time",
+      "is_procrastinator",
+      "has_trouble_finishing",
+      "productive_windows",
+    ];
+    const out = {};
+    keep.forEach((k) => {
+      if (profile[k] !== undefined) out[k] = profile[k];
+    });
+    return out;
+  })();
+
+  const today = new Date();
+  const todayIso = today.toISOString().slice(0, 10);
+
+  const userPrompt = `
+Rebalance the user's schedule for the next ${horizonDays} days starting ${todayIso}.
+Return JSON only: {"blocks":[{"taskId":"task-id","start":"ISO-8601 UTC","end":"ISO-8601 UTC","reason":"short"}]}.
+
+Hard rules:
+- "start" and "end" MUST be ISO-8601 timestamps in UTC with a trailing "Z", e.g. "2026-01-05T14:00:00Z".
+- Do not create blocks that overlap fixedBlocks.
+- Do not overlap your own blocks.
+- Only use taskIds from the provided tasks list.
+- Keep total scheduled work per day <= ${maxHoursPerDay} hours.
+- Each block must be at least 15 minutes and end after start.
+
+Soft rules:
+- Prefer scheduling higher priority and earlier deadlines first.
+- Split long tasks into multiple blocks, adding small buffers when reasonable.
+- Use the user's focus preferences when provided in profile.
+
+Tasks: ${JSON.stringify(tasksBrief).slice(0, 7000)}
+Fixed blocks (unavailable): ${JSON.stringify(fixedBrief).slice(0, 7000)}
+Current schedule (may be ignored): ${JSON.stringify(scheduleBrief).slice(0, 6000)}
+Profile: ${JSON.stringify(profileBrief).slice(0, 2000)}
+`.trim();
+
+  const reply = await callDeepSeek({
+    system: "You are a time-blocking assistant. Return strict JSON only.",
+    user: userPrompt,
+    temperature: 0.25,
+    maxTokens: 1200,
+    expectJSON: true,
+  });
+
+  const parsed = safeParseJSON(reply) || {};
+  const blocks = Array.isArray(parsed.blocks) ? parsed.blocks : [];
+  if (!blocks.length) {
+    throw new Error("AI returned no schedule blocks.");
+  }
+
+  // Basic validation (client also validates). Reject if nothing survives.
+  const taskIdSet = new Set(tasksBrief.map((t) => t.id));
+  const normalized = [];
+  for (const b of blocks) {
+    if (!b || typeof b !== "object") continue;
+    if (!taskIdSet.has(b.taskId)) continue;
+    const start = new Date(b.start);
+    const end = new Date(b.end);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) continue;
+    if (end <= start) continue;
+    normalized.push({
+      taskId: b.taskId,
+      start: start.toISOString(),
+      end: end.toISOString(),
+      reason: typeof b.reason === "string" ? b.reason.slice(0, 140) : "",
+    });
+  }
+
+  if (!normalized.length) {
+    throw new Error("AI returned invalid schedule blocks.");
+  }
+
+  return normalized;
+}
+
+function summarizeUserDataForAssistant(data) {
+  const profile = data?.profile && typeof data.profile === "object" ? data.profile : {};
+
+  const tasks = ensureArray(data?.tasks)
+    .slice(0, 120)
+    .map((t) => ({
+      id: String(t?.id || ""),
+      task_name: String(t?.task_name || ""),
+      task_priority: String(t?.task_priority || ""),
+      task_category: String(t?.task_category || ""),
+      task_deadline: String(t?.task_deadline || ""),
+      task_deadline_time: String(t?.task_deadline_time || ""),
+      task_duration_hours: Number.isFinite(Number(t?.task_duration_hours))
+        ? Number(t.task_duration_hours)
+        : null,
+      completed: !!t?.completed,
+    }))
+    .filter((t) => t.id && t.task_name);
+
+  const dailyHabits = ensureArray(data?.dailyHabits)
+    .slice(0, 80)
+    .map((h) => ({
+      id: String(h?.id || ""),
+      name: String(h?.name || ""),
+      time: String(h?.time || ""),
+    }))
+    .filter((h) => h.id && h.name);
+
+  return {
+    profile: {
+      user_name: profile?.user_name || profile?.name || "",
+      user_age_group: profile?.user_age_group || "",
+    },
+    tasks,
+    dailyHabits,
+  };
+}
+
+function clampNumber(value, { min, max }) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(min, Math.min(max, n));
+}
+
+function formatAssistantReply({ reply, plan, actions }) {
+  let out = String(reply || "").trim();
+  const planLines = Array.isArray(plan) ? plan.map((p) => String(p || "").trim()).filter(Boolean) : [];
+  const actionLines = Array.isArray(actions)
+    ? actions.map((a) => String(a || "").trim()).filter(Boolean)
+    : [];
+
+  if (planLines.length) {
+    out += `${out ? "\n\n" : ""}Plan:\n${planLines.map((p) => `- ${p}`).join("\n")}`;
+  }
+  if (actionLines.length) {
+    out += `${out ? "\n\n" : ""}Actions:\n${actionLines.map((a) => `- ${a}`).join("\n")}`;
+  }
+  return out || "Done.";
+}
+
+async function runAxisAssistantAgent({ userId, message }) {
+  const originalMessage = String(message || "").trim();
+  if (!originalMessage) {
+    return { reply: "What would you like me to help with?", plan: [], actions: [], data: null };
+  }
+
+  const loaded = await getUserData(userId);
+  if (!loaded) {
+    throw new Error("User data not found.");
+  }
+  const data = normalizeUserDataState(loaded);
+
+  const actions = [];
+  const toolResults = [];
+
+  const tools = {
+    add_task: async (args) => {
+      const raw = args && typeof args === "object" ? args : {};
+      const parsed = createTaskSchema.safeParse({
+        task_name: raw.task_name || raw.name || raw.title || "",
+        task_priority: raw.task_priority || raw.priority,
+        task_category: raw.task_category || raw.category,
+        task_deadline: raw.task_deadline || raw.deadline || "",
+        task_deadline_time: raw.task_deadline_time || raw.deadline_time || raw.deadlineTime || "23:59",
+        task_duration_hours: clampNumber(
+          raw.task_duration_hours ?? raw.duration_hours ?? raw.durationHours,
+          { min: 0, max: 80 },
+        ),
+      });
+
+      if (!parsed.success) {
+        return { ok: false, error: "Invalid arguments for add_task." };
+      }
+
+      const newTask = {
+        ...parsed.data,
+        id: `task_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+        completed: false,
+        order: getNextTaskOrder(data.tasks),
+      };
+      data.tasks.push(newTask);
+      actions.push(`Added task "${newTask.task_name}"`);
+      return { ok: true, task: newTask };
+    },
+
+    complete_task: async (args) => {
+      const raw = args && typeof args === "object" ? args : {};
+      const taskId = String(raw.taskId || raw.id || raw.task_id || "").trim();
+      const query = String(raw.query || raw.task_name || raw.name || "").trim();
+
+      let task = null;
+      if (taskId) {
+        task = data.tasks.find((t) => t?.id === taskId) || null;
+      } else if (query) {
+        task = findItemByQuery(data.tasks, query, (t) => t?.task_name);
+      }
+
+      if (!task) {
+        return { ok: false, error: "Task not found. Provide taskId or a unique task name." };
+      }
+
+      task.completed = true;
+      task.completedAt = new Date().toISOString();
+      actions.push(`Completed task "${task.task_name}"`);
+      return { ok: true, taskId: task.id };
+    },
+
+    delete_task: async (args) => {
+      const raw = args && typeof args === "object" ? args : {};
+      const taskId = String(raw.taskId || raw.id || raw.task_id || "").trim();
+      const query = String(raw.query || raw.task_name || raw.name || "").trim();
+
+      let idToDelete = taskId;
+      if (!idToDelete && query) {
+        const task = findItemByQuery(data.tasks, query, (t) => t?.task_name);
+        if (task) idToDelete = task.id;
+      }
+
+      if (!idToDelete) {
+        return { ok: false, error: "Task not found. Provide taskId or a unique task name." };
+      }
+
+      const before = data.tasks.length;
+      data.tasks = data.tasks.filter((t) => t?.id !== idToDelete);
+      if (data.tasks.length === before) {
+        return { ok: false, error: "Task not found." };
+      }
+
+      actions.push(`Deleted task ${idToDelete}`);
+      return { ok: true };
+    },
+
+    add_habit: async (args) => {
+      const raw = args && typeof args === "object" ? args : {};
+      const parsed = createHabitSchema.safeParse({
+        name: raw.name || raw.habit || raw.title || "",
+        time: raw.time || raw.when || "",
+        description: raw.description || "",
+      });
+
+      if (!parsed.success) {
+        return { ok: false, error: "Invalid arguments for add_habit." };
+      }
+
+      const habit = {
+        id: `habit_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+        name: parsed.data.name,
+        time: parsed.data.time,
+        description: parsed.data.description || "",
+      };
+      data.dailyHabits.push(habit);
+      actions.push(`Added habit "${habit.name}" at ${habit.time}`);
+      return { ok: true, habit };
+    },
+
+    delete_habit: async (args) => {
+      const raw = args && typeof args === "object" ? args : {};
+      const habitId = String(raw.habitId || raw.id || raw.habit_id || "").trim();
+      const query = String(raw.query || raw.name || raw.habit || "").trim();
+
+      let idToDelete = habitId;
+      if (!idToDelete && query) {
+        const habit = findItemByQuery(data.dailyHabits, query, (h) => h?.name);
+        if (habit) idToDelete = habit.id;
+      }
+
+      if (!idToDelete) {
+        return { ok: false, error: "Habit not found. Provide habitId or a unique habit name." };
+      }
+
+      const before = data.dailyHabits.length;
+      data.dailyHabits = data.dailyHabits.filter((h) => h?.id !== idToDelete);
+      if (data.dailyHabits.length === before) {
+        return { ok: false, error: "Habit not found." };
+      }
+
+      actions.push(`Deleted habit ${idToDelete}`);
+      return { ok: true };
+    },
+
+    rebalance_week: async (args) => {
+      const raw = args && typeof args === "object" ? args : {};
+      const horizonDays = Number.isFinite(Number(raw.horizonDays))
+        ? Math.max(1, Math.min(21, Math.round(Number(raw.horizonDays))))
+        : 7;
+      const maxHoursPerDay = Number.isFinite(Number(raw.maxHoursPerDay))
+        ? Math.max(1, Math.min(16, Math.round(Number(raw.maxHoursPerDay))))
+        : 10;
+
+      if (!data.profile) {
+        return { ok: false, error: "Profile is missing; complete onboarding before rebalancing." };
+      }
+
+      const blocks = await generateAiRescheduleBlocks({
+        tasks: ensureArray(data.tasks).filter((t) => !t?.completed),
+        fixedBlocks: ensureArray(data.fixedBlocks),
+        schedule: ensureArray(data.schedule),
+        profile: data.profile || {},
+        horizonDays,
+        maxHoursPerDay,
+      });
+
+      data.schedule = blocks.map((b) => ({
+        kind: "task",
+        taskId: b.taskId,
+        start: b.start,
+        end: b.end,
+      }));
+
+      actions.push(`Rebalanced schedule for ${horizonDays} days`);
+      return { ok: true, blocks: data.schedule };
+    },
+  };
+
+  const toolDocs = [
+    {
+      name: "add_task",
+      input: {
+        task_name: "string (required)",
+        task_priority: `"Urgent & Important" | "Urgent, Not Important" | "Important, Not Urgent" | "Not Urgent & Not Important" (optional)`,
+        task_category: "string (optional)",
+        task_deadline: "YYYY-MM-DD (optional)",
+        task_deadline_time: "HH:MM (optional)",
+        task_duration_hours: "number (optional)",
+      },
+    },
+    { name: "complete_task", input: { taskId: "string (optional)", query: "string (optional)" } },
+    { name: "delete_task", input: { taskId: "string (optional)", query: "string (optional)" } },
+    { name: "add_habit", input: { name: "string (required)", time: "string (required)", description: "string (optional)" } },
+    { name: "delete_habit", input: { habitId: "string (optional)", query: "string (optional)" } },
+    { name: "rebalance_week", input: { horizonDays: "number (optional)", maxHoursPerDay: "number (optional)" } },
+  ];
+
+  const systemPrompt =
+    "You are Axis Assistant, an agentic study planner. " +
+    "You can create/complete/delete tasks and add/delete daily habits using the provided tools. " +
+    "Always return strict JSON only, no markdown, no extra text.\n" +
+    "When you need to perform an action, respond with: " +
+    '{"type":"tool","tool":"tool_name","args":{...}}.\n' +
+    "When you are done, respond with: " +
+    '{"type":"final","reply":"...","plan":["..."],"notes":["..."]}.\n' +
+    "Keep plan short (<= 6 items). If you need clarification, ask in reply.";
+
+  for (let step = 0; step < 6; step += 1) {
+    const context = summarizeUserDataForAssistant(data);
+    const userPrompt = [
+      `User data (summary): ${JSON.stringify(context)}`,
+      `Available tools: ${JSON.stringify(toolDocs)}`,
+      toolResults.length ? `Tool results so far: ${JSON.stringify(toolResults)}` : "",
+      `User message: ${originalMessage}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    const raw = await callDeepSeek({
+      system: systemPrompt,
+      user: userPrompt,
+      temperature: 0.2,
+      maxTokens: 900,
+      expectJSON: true,
+    });
+
+    const parsed = safeParseJSON(raw);
+    if (!parsed || typeof parsed !== "object") {
+      toolResults.push({ ok: false, error: "Assistant returned invalid JSON." });
+      continue;
+    }
+
+    if (parsed.type === "tool") {
+      const toolName = String(parsed.tool || "").trim();
+      const handler = tools[toolName];
+      if (!handler) {
+        toolResults.push({ ok: false, error: `Unknown tool: ${toolName}` });
+        continue;
+      }
+
+      const result = await handler(parsed.args);
+      toolResults.push({ tool: toolName, ...result });
+      continue;
+    }
+
+    if (parsed.type === "final") {
+      const plan = Array.isArray(parsed.plan) ? parsed.plan : [];
+      const replyText = formatAssistantReply({ reply: parsed.reply, plan, actions });
+      await saveUserData(userId, data);
+      return { reply: replyText, plan, actions, data };
+    }
+
+    toolResults.push({ ok: false, error: "Assistant returned unknown response type." });
+  }
+
+  await saveUserData(userId, data);
+  return {
+    reply:
+      "I couldn’t finish that request safely. Try rephrasing, or ask me to do one specific action (e.g., “add a task called … due …”).",
+    plan: [],
+    actions,
+    data,
+  };
+}
+
 // --- Security / hardening middleware ---
 app.disable("x-powered-by");
 
@@ -349,6 +793,42 @@ const calendarExportSchema = z.object({
   reminderMinutes: z.number().int().min(0).max(240).optional().default(15),
 });
 
+const taskPrioritySchema = z.enum([
+  "Urgent & Important",
+  "Urgent, Not Important",
+  "Important, Not Urgent",
+  "Not Urgent & Not Important",
+]);
+
+const createTaskSchema = z.object({
+  task_name: z.string().min(1).max(200),
+  task_priority: taskPrioritySchema.optional().default("Important, Not Urgent"),
+  task_category: z.string().min(1).max(80).optional().default("study"),
+  task_deadline: z.string().max(30).optional().default(""),
+  task_deadline_time: z.string().max(10).optional().default("23:59"),
+  task_duration_hours: z.number().min(0).max(80).optional().nullable().default(null),
+});
+
+const updateTaskSchema = z.object({
+  task_name: z.string().min(1).max(200).optional(),
+  task_priority: taskPrioritySchema.optional(),
+  task_category: z.string().min(1).max(80).optional(),
+  task_deadline: z.string().max(30).optional(),
+  task_deadline_time: z.string().max(10).optional(),
+  task_duration_hours: z.number().min(0).max(80).optional().nullable(),
+  completed: z.boolean().optional(),
+});
+
+const createHabitSchema = z.object({
+  name: z.string().min(1).max(120),
+  time: z.string().min(1).max(40),
+  description: z.string().max(300).optional().default(""),
+});
+
+const assistantMessageSchema = z.object({
+  message: z.string().min(1).max(4000),
+});
+
 function validateBody(schema) {
   return (req, res, next) => {
     const parsed = schema.safeParse(req.body);
@@ -408,6 +888,46 @@ async function getUserData(userId) {
 async function saveUserData(userId, data) {
   const filePath = path.join(USER_DATA_DIR, `${userId}.json`);
   await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+}
+
+function ensureArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeUserDataState(data) {
+  if (!data || typeof data !== "object") data = {};
+  return {
+    ...data,
+    profile: data.profile ?? null,
+    tasks: ensureArray(data.tasks),
+    rankedTasks: ensureArray(data.rankedTasks),
+    schedule: ensureArray(data.schedule),
+    fixedBlocks: ensureArray(data.fixedBlocks),
+    goals: ensureArray(data.goals),
+    reflections: ensureArray(data.reflections),
+    blockingRules: ensureArray(data.blockingRules),
+    dailyHabits: ensureArray(data.dailyHabits),
+  };
+}
+
+function getNextTaskOrder(tasks) {
+  const safeTasks = ensureArray(tasks);
+  const maxOrder = safeTasks.reduce((max, t) => {
+    const value = Number(t?.order);
+    return Number.isFinite(value) ? Math.max(max, value) : max;
+  }, 0);
+  return maxOrder + 1;
+}
+
+function findItemByQuery(items, query, getName) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return null;
+  const matches = ensureArray(items).filter((item) => {
+    const name = String(getName(item) || "").toLowerCase();
+    return name.includes(q);
+  });
+  if (matches.length === 1) return matches[0];
+  return null;
 }
 
 // Middleware to verify JWT token
@@ -603,6 +1123,133 @@ app.post("/api/user/data", authenticateToken, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error("Save user data error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------- Task & Habit REST endpoints ----------
+
+app.get("/api/tasks", authenticateToken, async (req, res) => {
+  try {
+    const data = normalizeUserDataState(await getUserData(req.user.userId));
+    res.json({ tasks: data.tasks });
+  } catch (err) {
+    console.error("Get tasks error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post(
+  "/api/tasks",
+  authenticateToken,
+  validateBody(createTaskSchema),
+  async (req, res) => {
+    try {
+      const data = normalizeUserDataState(await getUserData(req.user.userId));
+      const newTask = {
+        ...req.body,
+        id: `task_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+        completed: false,
+        order: getNextTaskOrder(data.tasks),
+      };
+      data.tasks.push(newTask);
+      await saveUserData(req.user.userId, data);
+      res.status(201).json({ task: newTask });
+    } catch (err) {
+      console.error("Create task error:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
+
+app.patch(
+  "/api/tasks/:id",
+  authenticateToken,
+  validateBody(updateTaskSchema),
+  async (req, res) => {
+    try {
+      const taskId = String(req.params.id || "").trim();
+      if (!taskId) return res.status(400).json({ error: "Missing task id" });
+
+      const data = normalizeUserDataState(await getUserData(req.user.userId));
+      const idx = data.tasks.findIndex((t) => t?.id === taskId);
+      if (idx === -1) return res.status(404).json({ error: "Task not found" });
+
+      data.tasks[idx] = { ...data.tasks[idx], ...req.body, id: taskId };
+      await saveUserData(req.user.userId, data);
+      res.json({ task: data.tasks[idx] });
+    } catch (err) {
+      console.error("Update task error:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
+
+app.delete("/api/tasks/:id", authenticateToken, async (req, res) => {
+  try {
+    const taskId = String(req.params.id || "").trim();
+    if (!taskId) return res.status(400).json({ error: "Missing task id" });
+
+    const data = normalizeUserDataState(await getUserData(req.user.userId));
+    const before = data.tasks.length;
+    data.tasks = data.tasks.filter((t) => t?.id !== taskId);
+    if (data.tasks.length === before) return res.status(404).json({ error: "Task not found" });
+
+    await saveUserData(req.user.userId, data);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Delete task error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/api/habits", authenticateToken, async (req, res) => {
+  try {
+    const data = normalizeUserDataState(await getUserData(req.user.userId));
+    res.json({ dailyHabits: data.dailyHabits });
+  } catch (err) {
+    console.error("Get habits error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post(
+  "/api/habits",
+  authenticateToken,
+  validateBody(createHabitSchema),
+  async (req, res) => {
+    try {
+      const data = normalizeUserDataState(await getUserData(req.user.userId));
+      const habit = {
+        id: `habit_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+        name: req.body.name,
+        time: req.body.time,
+        description: req.body.description || "",
+      };
+      data.dailyHabits.push(habit);
+      await saveUserData(req.user.userId, data);
+      res.status(201).json({ habit });
+    } catch (err) {
+      console.error("Create habit error:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
+
+app.delete("/api/habits/:id", authenticateToken, async (req, res) => {
+  try {
+    const habitId = String(req.params.id || "").trim();
+    if (!habitId) return res.status(400).json({ error: "Missing habit id" });
+
+    const data = normalizeUserDataState(await getUserData(req.user.userId));
+    const before = data.dailyHabits.length;
+    data.dailyHabits = data.dailyHabits.filter((h) => h?.id !== habitId);
+    if (data.dailyHabits.length === before) return res.status(404).json({ error: "Habit not found" });
+
+    await saveUserData(req.user.userId, data);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Delete habit error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -947,131 +1594,13 @@ app.post(
   validateBody(aiRescheduleSchema),
   async (req, res) => {
     try {
-      const {
-        tasks = [],
-        fixedBlocks = [],
-        schedule = [],
-        profile = {},
-        horizonDays = 7,
-        maxHoursPerDay = 10,
-      } = req.body || {};
-
-      const tasksBrief = tasks
-        .filter((t) => t && typeof t === "object" && typeof t.id === "string")
-        .filter((t) => !t.completed)
-        .slice(0, 350)
-        .map((t) => ({
-          id: t.id,
-          name: String(t.task_name || "").slice(0, 140),
-          priority: String(t.task_priority || ""),
-          category: String(t.task_category || ""),
-          deadline: `${t.task_deadline || ""}T${t.task_deadline_time || "23:59"}`,
-          durationHours: Number(t.task_duration_hours || 0) || 0,
-        }));
-
-      const fixedBrief = fixedBlocks
-        .filter((b) => b && typeof b === "object" && b.start && b.end)
-        .slice(0, 500)
-        .map((b) => ({
-          start: b.start,
-          end: b.end,
-          label: String(b.label || b.kind || "Fixed").slice(0, 80),
-          category: String(b.category || ""),
-        }));
-
-      const scheduleBrief = schedule
-        .filter((b) => b && typeof b === "object" && b.start && b.end)
-        .slice(0, 500)
-        .map((b) => ({
-          taskId: b.taskId || "",
-          start: b.start,
-          end: b.end,
-        }));
-
-      const profileBrief = (() => {
-        if (!profile || typeof profile !== "object") return {};
-        const keep = [
-          "procrastinator_type",
-          "preferred_work_style",
-          "preferred_study_method",
-          "most_productive_time",
-          "is_procrastinator",
-          "has_trouble_finishing",
-          "productive_windows",
-        ];
-        const out = {};
-        keep.forEach((k) => {
-          if (profile[k] !== undefined) out[k] = profile[k];
-        });
-        return out;
-      })();
-
-      const today = new Date();
-      const todayIso = today.toISOString().slice(0, 10);
-
-      const userPrompt = `
-Rebalance the user's schedule for the next ${horizonDays} days starting ${todayIso}.
-Return JSON only: {"blocks":[{"taskId":"task-id","start":"ISO-8601 UTC","end":"ISO-8601 UTC","reason":"short"}]}.
-
-Hard rules:
-- "start" and "end" MUST be ISO-8601 timestamps in UTC with a trailing "Z", e.g. "2026-01-05T14:00:00Z".
-- Do not create blocks that overlap fixedBlocks.
-- Do not overlap your own blocks.
-- Only use taskIds from the provided tasks list.
-- Keep total scheduled work per day <= ${maxHoursPerDay} hours.
-- Each block must be at least 15 minutes and end after start.
-
-Soft rules:
-- Prefer scheduling higher priority and earlier deadlines first.
-- Split long tasks into multiple blocks, adding small buffers when reasonable.
-- Use the user's focus preferences when provided in profile.
-
-Tasks: ${JSON.stringify(tasksBrief).slice(0, 7000)}
-Fixed blocks (unavailable): ${JSON.stringify(fixedBrief).slice(0, 7000)}
-Current schedule (may be ignored): ${JSON.stringify(scheduleBrief).slice(0, 6000)}
-Profile: ${JSON.stringify(profileBrief).slice(0, 2000)}
-`.trim();
-
-      const reply = await callDeepSeek({
-        system: "You are a time-blocking assistant. Return strict JSON only.",
-        user: userPrompt,
-        temperature: 0.25,
-        maxTokens: 1200,
-        expectJSON: true,
-      });
-
-      const parsed = safeParseJSON(reply) || {};
-      const blocks = Array.isArray(parsed.blocks) ? parsed.blocks : [];
-      if (!blocks.length) {
-        return res.status(502).json({ error: "AI returned no schedule blocks." });
-      }
-
-      // Basic validation (client also validates). Reject if nothing survives.
-      const taskIdSet = new Set(tasksBrief.map((t) => t.id));
-      const normalized = [];
-      for (const b of blocks) {
-        if (!b || typeof b !== "object") continue;
-        if (!taskIdSet.has(b.taskId)) continue;
-        const start = new Date(b.start);
-        const end = new Date(b.end);
-        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) continue;
-        if (end <= start) continue;
-        normalized.push({
-          taskId: b.taskId,
-          start: start.toISOString(),
-          end: end.toISOString(),
-          reason: typeof b.reason === "string" ? b.reason.slice(0, 140) : "",
-        });
-      }
-
-      if (!normalized.length) {
-        return res.status(502).json({ error: "AI returned invalid schedule blocks." });
-      }
-
-      res.json({ blocks: normalized });
+      const blocks = await generateAiRescheduleBlocks(req.body || {});
+      res.json({ blocks });
     } catch (err) {
       console.error("reschedule error:", err);
-      res.status(500).json({ error: err.message || "Reschedule failed" });
+      const msg = err?.message || "Reschedule failed";
+      const status = String(msg).toLowerCase().includes("ai returned") ? 502 : 500;
+      res.status(status).json({ error: msg });
     }
   },
 );
@@ -1177,6 +1706,24 @@ Estimates: ${JSON.stringify(estimates).slice(0, 2000)}
 
 // Serve the existing static front-end (index.html, script.js, style.css, etc.)
 app.use(express.static(path.join(__dirname)));
+
+app.post(
+  "/api/assistant",
+  authenticateToken,
+  validateBody(assistantMessageSchema),
+  async (req, res) => {
+    try {
+      const result = await runAxisAssistantAgent({
+        userId: req.user.userId,
+        message: req.body.message,
+      });
+      res.json(result);
+    } catch (err) {
+      console.error("Error in /api/assistant:", err);
+      res.status(500).json({ error: err.message || "Assistant failed." });
+    }
+  },
+);
 
 app.post("/api/chat", async (req, res) => {
   try {
