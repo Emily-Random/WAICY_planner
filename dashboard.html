@@ -255,61 +255,23 @@
           </div>
         </section>
 
-        <!-- Daily Habits -->
-	        <section class="panel panel-habits">
-	          <div class="panel-header">
-	            <h2>Daily Habits</h2>
-	            <span class="panel-subtitle">Fixed tasks you can set up</span>
-	          </div>
-	          <div class="habits-content">
-	            <button type="button" id="addHabitBtn" class="btn-add-goal" title="Add a new habit">
-	              <span class="btn-add-goal-icon">+</span>
-	              <span>Add Daily Habit</span>
-	            </button>
-	            <div id="habitsList" class="habits-list">
-	              <!-- Daily habits populated by JS -->
-	            </div>
-	          </div>
-	        </section>
-	      </aside>
-        <section class="panel panel-habits">
-          <div class="panel-header">
-            <h2>Daily Habits</h2>
-            <span class="panel-subtitle">Fixed tasks you can set up</span>
-          </div>
-          <div class="habits-content">
-            <button type="button" id="addHabitBtn" class="btn-add-goal" title="Add a new habit">
-              <span class="btn-add-goal-icon">+</span>
-              <span>Add Daily Habit</span>
-            </button>
-            <div id="habitsList" class="habits-list">
-              <!-- Daily habits populated by JS -->
-            </div>
-          </div>
-        </section>
-
-        <!-- Chatbot -->
-        <section class="panel panel-chat" aria-labelledby="chat-heading">
-          <div class="panel-header">
-            <h2 id="chat-heading">Axis Assistant</h2>
-            <span class="panel-subtitle">Ask for planning &amp; focus tips</span>
-          </div>
-          <div id="chatWindow" class="chat-window" role="log" aria-label="Chat messages" aria-live="polite" aria-atomic="false">
-            <!-- Chat messages -->
-          </div>
-          <form id="chatForm" class="chat-input-row" aria-label="Chat input form">
-            <label for="chatInput" class="sr-only">Type your message</label>
-            <input
-              type="text"
-              id="chatInput"
-              placeholder="Ask me anything about your schedule..."
-              autocomplete="off"
-              aria-label="Chat message input"
-            />
-            <button type="submit" class="btn btn-primary" aria-label="Send message">Send</button>
-          </form>
-        </section>
-      </aside>
+	        <!-- Daily Habits -->
+		        <section class="panel panel-habits">
+		          <div class="panel-header">
+		            <h2>Daily Habits</h2>
+		            <span class="panel-subtitle">Fixed tasks you can set up</span>
+		          </div>
+		          <div class="habits-content">
+		            <button type="button" id="addHabitBtn" class="btn-add-goal" title="Add a new habit">
+		              <span class="btn-add-goal-icon">+</span>
+		              <span>Add Daily Habit</span>
+		            </button>
+		            <div id="habitsList" class="habits-list">
+		              <!-- Daily habits populated by JS -->
+		            </div>
+		          </div>
+		        </section>
+		      </aside>
 
 	      <section class="main-panel">
 	        <!-- Middle: Calendar -->
@@ -356,20 +318,22 @@
 	        </section>
 
 	        <!-- Chatbot -->
-	        <section class="panel panel-chat panel-chat-large">
+	        <section class="panel panel-chat panel-chat-large" aria-labelledby="chat-heading">
 	          <div class="panel-header">
-	            <h2>Axis Assistant</h2>
+	            <h2 id="chat-heading">Axis Assistant</h2>
 	            <span class="panel-subtitle">Ask for planning &amp; focus tips</span>
 	          </div>
-	          <div id="chatWindow" class="chat-window">
+	          <div id="chatWindow" class="chat-window" role="log" aria-label="Chat messages" aria-live="polite" aria-atomic="false">
 	            <!-- Chat messages -->
 	          </div>
-	          <form id="chatForm" class="chat-input-row">
+	          <form id="chatForm" class="chat-input-row" aria-label="Chat input form">
+	            <label for="chatInput" class="sr-only">Type your message</label>
 	            <input
 	              type="text"
 	              id="chatInput"
 	              placeholder="Ask me anything about your schedule..."
 	              autocomplete="off"
+	              aria-label="Chat message input"
 	            />
 	            <button type="submit" class="btn btn-primary">Send</button>
 	          </form>

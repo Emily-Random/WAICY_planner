@@ -1278,6 +1278,7 @@ body {
   flex: 1;
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(0, 2fr);
+  grid-template-rows: 1fr;
   gap: 20px;
   padding: 18px 22px 26px;
   min-height: 0;
@@ -1288,6 +1289,7 @@ body {
   flex-direction: column;
   gap: 16px;
   min-height: 0;
+  height: 100%;
 }
 
 
@@ -1842,6 +1844,7 @@ body {
   flex-direction: column;
   gap: 16px;
   min-height: 0;
+  height: 100%;
 }
 
 .wizard-modal {
@@ -3975,6 +3978,7 @@ textarea {
 @media (max-width: 1080px) {
   .app-main {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
     gap: 16px;
     padding: 16px;
   }
