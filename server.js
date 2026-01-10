@@ -113,6 +113,43 @@ if (LLM_PROVIDER === "gemini" && (!GEMINI_API_KEY || GEMINI_API_KEY === "your_ge
   );
 }
 
+function normalizeProvider(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  return SUPPORTED_LLM_PROVIDERS.has(raw) ? raw : "";
+}
+
+function isProviderConfigured(provider) {
+  const normalized = normalizeProvider(provider);
+  if (normalized === "deepseek") {
+    return Boolean(DEEPSEEK_API_KEY && DEEPSEEK_API_KEY !== "your_deepseek_api_key_here");
+  }
+  if (normalized === "openai") {
+    return Boolean(OPENAI_API_KEY && OPENAI_API_KEY !== "your_openai_api_key_here");
+  }
+  if (normalized === "gemini") {
+    return Boolean(GEMINI_API_KEY && GEMINI_API_KEY !== "your_gemini_api_key_here");
+  }
+  return false;
+}
+
+function listConfiguredProviders() {
+  return Array.from(SUPPORTED_LLM_PROVIDERS).filter(isProviderConfigured).sort();
+}
+
+function resolveProviderForUserData(data) {
+  const safeData = ensureAxisUserDataShape(data);
+  const selected = normalizeProvider(safeData?.settings?.aiProvider);
+  if (selected && isProviderConfigured(selected)) return selected;
+
+  const envDefault = normalizeProvider(LLM_PROVIDER) || "deepseek";
+  if (isProviderConfigured(envDefault)) return envDefault;
+
+  const configured = listConfiguredProviders();
+  if (configured.length) return configured[0];
+
+  return envDefault;
+}
+
 // ---------- LLM helpers ----------
 function safeParseJSON(text) {
   try {
@@ -622,6 +659,11 @@ async function getUserData(userId) {
   }
 }
 
+async function getEffectiveProviderForUserId(userId) {
+  const data = await getUserData(userId);
+  return resolveProviderForUserData(data);
+}
+
 async function saveUserData(userId, data) {
   const filePath = path.join(USER_DATA_DIR, `${userId}.json`);
   await fs.writeFile(filePath, JSON.stringify(data, null, 2));
@@ -630,6 +672,7 @@ async function saveUserData(userId, data) {
 function ensureAxisUserDataShape(data) {
   if (!data || typeof data !== "object") {
     return {
+      settings: { aiProvider: null },
       profile: null,
       tasks: [],
       rankedTasks: [],
@@ -648,7 +691,12 @@ function ensureAxisUserDataShape(data) {
     };
   }
 
+  const rawSettings = data.settings && typeof data.settings === "object" ? data.settings : {};
+  const aiProviderRaw = typeof rawSettings.aiProvider === "string" ? rawSettings.aiProvider.trim().toLowerCase() : "";
+  const aiProvider = SUPPORTED_LLM_PROVIDERS.has(aiProviderRaw) ? aiProviderRaw : null;
+
   return {
+    settings: { aiProvider },
     profile: data.profile ?? null,
     tasks: Array.isArray(data.tasks) ? data.tasks : [],
     rankedTasks: Array.isArray(data.rankedTasks) ? data.rankedTasks : [],
@@ -1401,6 +1449,7 @@ const ASSISTANT_TOOLS = [
 
 async function aiRebalanceScheduleFromUserData({ data, horizonDays, maxHoursPerDay }) {
   const safeData = ensureAxisUserDataShape(data);
+  const provider = resolveProviderForUserData(safeData);
   const tasks = Array.isArray(safeData.tasks) ? safeData.tasks : [];
   const fixedBlocks = Array.isArray(safeData.fixedBlocks) ? safeData.fixedBlocks : [];
   const schedule = Array.isArray(safeData.schedule) ? safeData.schedule : [];
@@ -1492,6 +1541,7 @@ Profile: ${JSON.stringify(profileBrief).slice(0, 2000)}
     temperature: 0.25,
     maxTokens: 1200,
     expectJSON: true,
+    provider,
   });
 
   const parsed = safeParseJSON(reply) || {};
@@ -1699,10 +1749,19 @@ ${resultsJson}
 }
 
 app.get("/api/assistant/tools", authenticateToken, async (req, res) => {
-  res.json({
-    provider: SUPPORTED_LLM_PROVIDERS.has(LLM_PROVIDER) ? LLM_PROVIDER : "deepseek",
-    tools: ASSISTANT_TOOLS,
-  });
+  try {
+    const data = await getUserData(req.user.userId);
+    const safeData = ensureAxisUserDataShape(data);
+    res.json({
+      provider: resolveProviderForUserData(safeData),
+      supportedProviders: Array.from(SUPPORTED_LLM_PROVIDERS).sort(),
+      configuredProviders: listConfiguredProviders(),
+      tools: ASSISTANT_TOOLS,
+    });
+  } catch (err) {
+    console.error("assistant tools error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 app.post(
@@ -1716,6 +1775,7 @@ app.post(
       if (!rawData) return res.status(404).json({ error: "User data not found" });
 
       const data = ensureAxisUserDataShape(rawData);
+      const provider = resolveProviderForUserData(data);
       const snapshot = buildAssistantSnapshot(data);
       const message = req.body.message;
 
@@ -1726,6 +1786,7 @@ app.post(
         temperature: 0.2,
         maxTokens: 900,
         expectJSON: true,
+        provider,
       });
 
       const planParsed = assistantPlannerResponseSchema.safeParse(safeParseJSON(planRaw));
@@ -1772,6 +1833,7 @@ app.post(
         temperature: 0.25,
         maxTokens: 700,
         expectJSON: true,
+        provider,
       });
 
       const finalParsed = assistantFinalResponseSchema.safeParse(safeParseJSON(finalRaw));
@@ -1927,6 +1989,31 @@ app.get("/api/user/info", authenticateToken, async (req, res) => {
   }
 });
 
+app.get("/api/ai/providers", authenticateToken, async (req, res) => {
+  try {
+    const data = await getUserData(req.user.userId);
+    if (!data) return res.status(404).json({ error: "User data not found" });
+
+    const safeData = ensureAxisUserDataShape(data);
+    const supportedProviders = Array.from(SUPPORTED_LLM_PROVIDERS).sort();
+    const configuredProviders = listConfiguredProviders();
+    const defaultProvider = normalizeProvider(LLM_PROVIDER) || "deepseek";
+    const selectedProvider = safeData.settings.aiProvider;
+    const effectiveProvider = resolveProviderForUserData(safeData);
+
+    res.json({
+      supportedProviders,
+      configuredProviders,
+      defaultProvider,
+      selectedProvider,
+      effectiveProvider,
+    });
+  } catch (err) {
+    console.error("Get AI providers error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ---------- AI Planning Endpoints (DeepSeek-powered) ----------
 
 app.post("/api/ai/task-priority", async (req, res) => {
@@ -1989,6 +2076,7 @@ User says important: ${normalizedImportantHint || "unknown"}
 
 app.post("/api/ai/prioritize-tasks", authenticateToken, async (req, res) => {
   try {
+    const provider = await getEffectiveProviderForUserId(req.user.userId);
     const { tasks = [], profile = {}, timeBudgetHours = 6 } = req.body || {};
     const userPrompt = `
 Given the tasks and user profile, rank the top tasks to do next.
@@ -2005,6 +2093,7 @@ Profile: ${JSON.stringify(profile).slice(0, 2000)}
       temperature: 0.2,
       maxTokens: 700,
       expectJSON: true,
+      provider,
     });
     const parsed = safeParseJSON(reply) || { rankedTasks: [] };
     res.json(parsed);
@@ -2016,6 +2105,7 @@ Profile: ${JSON.stringify(profile).slice(0, 2000)}
 
 app.post("/api/ai/schedule", authenticateToken, async (req, res) => {
   try {
+    const provider = await getEffectiveProviderForUserId(req.user.userId);
     const {
       tasks = [],
       fixedBlocks = [],
@@ -2041,6 +2131,7 @@ Productive windows: ${JSON.stringify(productiveWindows).slice(0, 1500)}
       temperature: 0.25,
       maxTokens: 700,
       expectJSON: true,
+      provider,
     });
     const parsed = safeParseJSON(reply) || { blocks: [] };
     res.json(parsed);
@@ -2056,6 +2147,7 @@ app.post(
   validateBody(aiRescheduleSchema),
   async (req, res) => {
     try {
+      const provider = await getEffectiveProviderForUserId(req.user.userId);
       const {
         tasks = [],
         fixedBlocks = [],
@@ -2147,6 +2239,7 @@ Profile: ${JSON.stringify(profileBrief).slice(0, 2000)}
         temperature: 0.25,
         maxTokens: 1200,
         expectJSON: true,
+        provider,
       });
 
       const parsed = safeParseJSON(reply) || {};
@@ -2187,6 +2280,7 @@ Profile: ${JSON.stringify(profileBrief).slice(0, 2000)}
 
 app.post("/api/ai/reflection-summary", authenticateToken, async (req, res) => {
   try {
+    const provider = await getEffectiveProviderForUserId(req.user.userId);
     const { reflections = [], goals = [] } = req.body || {};
     const userPrompt = `
 Summarize the recent reflections and suggest a weekly focus.
@@ -2201,6 +2295,7 @@ Goals: ${JSON.stringify(goals).slice(0, 3000)}
       temperature: 0.3,
       maxTokens: 500,
       expectJSON: true,
+      provider,
     });
     const parsed = safeParseJSON(reply) || {};
     res.json(parsed);
@@ -2212,6 +2307,7 @@ Goals: ${JSON.stringify(goals).slice(0, 3000)}
 
 app.post("/api/ai/mood-plan", authenticateToken, async (req, res) => {
   try {
+    const provider = await getEffectiveProviderForUserId(req.user.userId);
     const { mood = "neutral", energy = "medium", tasks = [] } = req.body || {};
     const userPrompt = `
 Given mood "${mood}" and energy "${energy}", pick matching work styles.
@@ -2225,6 +2321,7 @@ Tasks: ${JSON.stringify(tasks).slice(0, 3000)}
       temperature: 0.35,
       maxTokens: 400,
       expectJSON: true,
+      provider,
     });
     const parsed = safeParseJSON(reply) || {};
     res.json(parsed);
@@ -2236,6 +2333,7 @@ Tasks: ${JSON.stringify(tasks).slice(0, 3000)}
 
 app.post("/api/ai/habit", authenticateToken, async (req, res) => {
   try {
+    const provider = await getEffectiveProviderForUserId(req.user.userId);
     const { goals = [], recentTasks = [] } = req.body || {};
     const userPrompt = `
 Suggest one tiny daily habit that supports the goals.
@@ -2250,6 +2348,7 @@ Recent tasks: ${JSON.stringify(recentTasks).slice(0, 2000)}
       temperature: 0.35,
       maxTokens: 400,
       expectJSON: true,
+      provider,
     });
     const parsed = safeParseJSON(reply) || {};
     res.json(parsed);
@@ -2261,6 +2360,7 @@ Recent tasks: ${JSON.stringify(recentTasks).slice(0, 2000)}
 
 app.post("/api/ai/focus-tuning", authenticateToken, async (req, res) => {
   try {
+    const provider = await getEffectiveProviderForUserId(req.user.userId);
     const { blocks = [], estimates = [] } = req.body || {};
     const userPrompt = `
 Given recent focus blocks and estimate accuracy, suggest block length.
@@ -2275,6 +2375,7 @@ Estimates: ${JSON.stringify(estimates).slice(0, 2000)}
       temperature: 0.3,
       maxTokens: 350,
       expectJSON: true,
+      provider,
     });
     const parsed = safeParseJSON(reply) || {};
     res.json(parsed);

@@ -295,7 +295,15 @@ const PRODUCTIVE_TIME_WINDOWS = {
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+const AXIS_SUPPORTED_AI_PROVIDERS = new Set(["deepseek", "openai", "gemini"]);
+
+function normalizeAiProvider(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  return AXIS_SUPPORTED_AI_PROVIDERS.has(raw) ? raw : null;
+}
+
 let state = {
+  settings: { aiProvider: null },
   profile: null,
   tasks: [],
   rankedTasks: [],
@@ -784,6 +792,9 @@ async function loadUserData() {
 
     const data = await res.json();
     state = {
+      settings: {
+        aiProvider: normalizeAiProvider(data?.settings?.aiProvider),
+      },
       profile: data.profile || null,
       tasks: data.tasks || [],
       rankedTasks: data.rankedTasks || [],
@@ -824,6 +835,9 @@ async function loadUserData() {
     const cached = await axisLoadCachedStateSnapshot();
     if (cached) {
       state = {
+        settings: {
+          aiProvider: normalizeAiProvider(cached?.settings?.aiProvider),
+        },
         profile: cached.profile || null,
         tasks: cached.tasks || [],
         rankedTasks: cached.rankedTasks || [],
@@ -1793,6 +1807,7 @@ function handleContinueWithoutLogin() {
   
   // Initialize empty state for guest
   state = {
+    settings: { aiProvider: null },
     profile: null,
     tasks: [],
     rankedTasks: [],
@@ -1855,6 +1870,9 @@ loadUserData = async function() {
       try {
         const parsed = JSON.parse(savedState);
         state = {
+          settings: {
+            aiProvider: normalizeAiProvider(parsed?.settings?.aiProvider),
+          },
           profile: parsed.profile || null,
           tasks: parsed.tasks || [],
           rankedTasks: parsed.rankedTasks || [],
@@ -1901,6 +1919,7 @@ function handleLogout() {
     stopReflectionChecker();
     setAuthToken(null);
     state = {
+      settings: { aiProvider: null },
       profile: null,
       tasks: [],
       rankedTasks: [],
@@ -2196,6 +2215,98 @@ function initProfileEditForm() {
   });
 }
 
+function aiProviderLabel(provider) {
+  const normalized = normalizeAiProvider(provider);
+  if (normalized === "openai") return "OpenAI";
+  if (normalized === "gemini") return "Gemini";
+  return "DeepSeek";
+}
+
+async function initAiProviderSettings() {
+  const select = document.getElementById("aiProviderSelect");
+  const help = document.getElementById("aiProviderHelp");
+  const status = document.getElementById("aiProviderSaveStatus");
+  if (!select || !help) return;
+
+  const token = getAuthToken();
+  const isGuest = !token || token.startsWith("guest_");
+
+  if (isGuest) {
+    select.innerHTML = `<option value="">Default</option>`;
+    select.disabled = true;
+    help.textContent = "AI provider selection requires an account.";
+    return;
+  }
+
+  select.disabled = true;
+  help.textContent = "Loading…";
+
+  let providers;
+  try {
+    const res = await fetch("/api/ai/providers", { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error(`Failed to load providers (${res.status})`);
+    providers = await res.json();
+  } catch (err) {
+    console.error("AI provider load error:", err);
+    select.innerHTML = `<option value="">Default</option>`;
+    select.disabled = true;
+    help.textContent = "Could not load AI provider options.";
+    return;
+  }
+
+  const supported = Array.isArray(providers.supportedProviders) ? providers.supportedProviders : [];
+  const configured = new Set(Array.isArray(providers.configuredProviders) ? providers.configuredProviders : []);
+  const defaultProvider = normalizeAiProvider(providers.defaultProvider) || "deepseek";
+  const effectiveProvider = normalizeAiProvider(providers.effectiveProvider) || defaultProvider;
+
+  const currentSelection = normalizeAiProvider(state?.settings?.aiProvider) || normalizeAiProvider(providers.selectedProvider);
+
+  select.innerHTML = "";
+
+  const defaultOpt = document.createElement("option");
+  defaultOpt.value = "";
+  defaultOpt.textContent = `Default (${aiProviderLabel(defaultProvider)})`;
+  select.appendChild(defaultOpt);
+
+  supported.forEach((p) => {
+    const normalized = normalizeAiProvider(p);
+    if (!normalized) return;
+    const opt = document.createElement("option");
+    opt.value = normalized;
+    opt.textContent = aiProviderLabel(normalized) + (configured.has(normalized) ? "" : " (not configured)");
+    opt.disabled = !configured.has(normalized);
+    select.appendChild(opt);
+  });
+
+  select.value = currentSelection || "";
+  select.disabled = false;
+  help.textContent = `Using: ${aiProviderLabel(effectiveProvider)}.`;
+
+  select.onchange = async () => {
+    const next = normalizeAiProvider(select.value);
+    state.settings = state.settings && typeof state.settings === "object" ? state.settings : { aiProvider: null };
+    state.settings.aiProvider = next;
+
+    if (status) {
+      status.textContent = "Saving…";
+      status.className = "save-status loading";
+    }
+
+    await saveUserData();
+
+    if (status) {
+      status.textContent = "Saved ✓";
+      status.className = "save-status success";
+      setTimeout(() => {
+        status.textContent = "";
+        status.className = "save-status";
+      }, 1600);
+    }
+
+    help.textContent = `Using: ${aiProviderLabel(next || defaultProvider)}.`;
+  };
+}
+
 async function initSettings() {
   // Load current user info from server if available
   const token = getAuthToken();
@@ -2249,6 +2360,8 @@ async function initSettings() {
   
   // Initialize edit learning preferences button
   initEditLearningPrefsButton();
+
+  await initAiProviderSettings();
 
   try {
     window.AxisCelebrations?.bindSettingsUi?.();

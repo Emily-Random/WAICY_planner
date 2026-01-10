@@ -634,10 +634,10 @@
             
             <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border-subtle);">
             
-            <h3>Learning Preferences</h3>
-            <p class="settings-description">Update your learning personalization settings.</p>
+            <h3>Preferences</h3>
+            <p class="settings-description">Update availability, sleep, breaks, and work style.</p>
             <button type="button" class="btn btn-secondary" id="editLearningPrefsBtn">
-              Edit Learning Preferences
+              Edit Preferences
             </button>
           </div>
 
@@ -770,6 +770,21 @@
             <div style="margin-top: 18px;">
               <h4 style="margin: 0 0 10px;">Achievements</h4>
               <div id="achievementBadges" class="achievement-badges"></div>
+            </div>
+
+            <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border-subtle);">
+
+            <h3>AI Provider</h3>
+            <p class="settings-description">
+              Choose which AI Axis uses for scheduling and the assistant.
+            </p>
+            <div class="settings-form" style="max-width: 520px;">
+              <div id="aiProviderSaveStatus" class="save-status"></div>
+              <div class="form-group">
+                <label for="aiProviderSelect">Provider</label>
+                <select id="aiProviderSelect"></select>
+                <small class="form-hint" id="aiProviderHelp">Loading…</small>
+              </div>
             </div>
 
             <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border-subtle);">
