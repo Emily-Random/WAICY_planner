@@ -5049,30 +5049,6 @@ textarea {
     outline-offset: 2px;
   }
   
-  /* Skip to main content link */
-  .skip-link {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    background: var(--accent-green);
-    border: 1px solid var(--accent-green-dark);
-    color: #ffffff;
-    padding: 10px 14px;
-    border-radius: 12px;
-    text-decoration: none;
-    z-index: 10000;
-    transform: translateY(-220%);
-    opacity: 0;
-    transition:
-      transform var(--transition-fast),
-      opacity var(--transition-fast);
-  }
-  
-  .skip-link:focus,
-  .skip-link:focus-visible {
-    transform: translateY(0);
-    opacity: 1;
-  }
 
 .productivity-score {
   display: flex;
