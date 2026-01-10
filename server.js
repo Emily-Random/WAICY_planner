@@ -15,15 +15,22 @@ require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET;
 const USERS_FILE = path.join(__dirname, "users.json");
 const USER_DATA_DIR = path.join(__dirname, "user_data");
 
-if (!JWT_SECRET || JWT_SECRET.trim().length < 32) {
-  console.warn(
-    "⚠️  WARNING: JWT_SECRET is not set or is too short. Set JWT_SECRET in .env (>= 32 chars) for secure auth.",
-  );
-}
+// Auto-generate JWT_SECRET if not set or too short
+const JWT_SECRET = (() => {
+  const envSecret = process.env.JWT_SECRET;
+  if (envSecret && envSecret.trim().length >= 32) {
+    return envSecret.trim();
+  }
+  // Generate a secure random secret for this session
+  const generatedSecret = crypto.randomBytes(48).toString("base64");
+  console.log("⚠️  JWT_SECRET not set or too short. Auto-generated a secure secret for this session.");
+  console.log("   Note: Users will need to re-login if the server restarts.");
+  console.log("   For persistent sessions, add JWT_SECRET to your .env file (>= 32 chars).");
+  return generatedSecret;
+})();
 
 function normalizeApiKey(key) {
   if (!key) return "";
