@@ -26,5 +26,12 @@
     "password": "$2a$10$Or79dj7jygaPM2KsUXsdBOZmWnJ6oVq6eGCJQ44I0QGDmVNNfsfc.",
     "name": "Doge",
     "createdAt": "2025-12-07T15:00:50.152Z"
+  },
+  "richard@example.com": {
+    "id": "user_1768051099985_nvbh6zqpk",
+    "email": "richard@example.com",
+    "password": "$2a$10$KTwE1Sdxe6dtP3ySQ/6kx.GFY/Pr.PSTKCu5QzGRoA2Zx0KxVVgaK",
+    "name": "Richard",
+    "createdAt": "2026-01-10T13:18:19.985Z"
   }
 }

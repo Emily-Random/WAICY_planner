@@ -477,10 +477,11 @@ const registerSchema = z.object({
   email: z.string().email().max(254),
   password: z.string().min(8).max(200),
   name: z.string().min(1).max(100),
+  username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
 });
 
 const loginSchema = z.object({
-  email: z.string().email().max(254),
+  identifier: z.string().min(1).max(254), // Can be username or email
   password: z.string().min(1).max(200),
 });
 
@@ -832,11 +833,21 @@ app.post("/api/auth/register", validateBody(registerSchema), async (req, res) =>
   try {
     if (!requireJwtSecret(res)) return;
 
-    const { email, password, name } = req.body;
+    const { email, password, name, username } = req.body;
 
     const users = await getUsers();
+    
+    // Check if email already exists
     if (users[email]) {
-      return res.status(409).json({ error: "User already exists" });
+      return res.status(409).json({ error: "Email already registered" });
+    }
+    
+    // Check if username already exists
+    const usernameExists = Object.values(users).some(
+      (u) => u.username && u.username.toLowerCase() === username.toLowerCase()
+    );
+    if (usernameExists) {
+      return res.status(409).json({ error: "Username already taken" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -845,6 +856,7 @@ app.post("/api/auth/register", validateBody(registerSchema), async (req, res) =>
     users[email] = {
       id: userId,
       email,
+      username,
       password: hashedPassword,
       name,
       createdAt: new Date().toISOString(),
@@ -864,8 +876,8 @@ app.post("/api/auth/register", validateBody(registerSchema), async (req, res) =>
       blockingRules: [],
     });
 
-    const token = jwt.sign({ userId, email }, JWT_SECRET, { expiresIn: "30d" });
-    res.json({ token, user: { id: userId, email, name } });
+    const token = jwt.sign({ userId, email, username }, JWT_SECRET, { expiresIn: "30d" });
+    res.json({ token, user: { id: userId, email, username, name } });
   } catch (err) {
     console.error("Registration error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -876,10 +888,29 @@ app.post("/api/auth/login", validateBody(loginSchema), async (req, res) => {
   try {
     if (!requireJwtSecret(res)) return;
 
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;
 
     const users = await getUsers();
-    const user = users[email];
+    
+    // Find user by email or username
+    let user = null;
+    let userEmail = null;
+    
+    // First try direct email lookup
+    if (users[identifier]) {
+      user = users[identifier];
+      userEmail = identifier;
+    } else {
+      // Search by username (case-insensitive)
+      for (const [email, u] of Object.entries(users)) {
+        if (u.username && u.username.toLowerCase() === identifier.toLowerCase()) {
+          user = u;
+          userEmail = email;
+          break;
+        }
+      }
+    }
+    
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
@@ -889,8 +920,8 @@ app.post("/api/auth/login", validateBody(loginSchema), async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ userId: user.id, email }, JWT_SECRET, { expiresIn: "30d" });
-    res.json({ token, user: { id: user.id, email, name: user.name } });
+    const token = jwt.sign({ userId: user.id, email: userEmail, username: user.username }, JWT_SECRET, { expiresIn: "30d" });
+    res.json({ token, user: { id: user.id, email: userEmail, username: user.username, name: user.name } });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Internal server error" });
