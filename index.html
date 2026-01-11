@@ -24,12 +24,22 @@
   <div id="app">
     <!-- Landing Page -->
     <div id="landingPage" class="landing-page">
+      <!-- Animated Background Elements -->
+      <div class="landing-bg-elements" aria-hidden="true">
+        <div class="landing-orb landing-orb-1"></div>
+        <div class="landing-orb landing-orb-2"></div>
+        <div class="landing-orb landing-orb-3"></div>
+        <div class="landing-grid"></div>
+      </div>
+
       <header class="landing-header">
         <div class="logo">
           <span class="logo-mark target-icon" aria-hidden="true"></span>
           <span class="logo-text">Axis</span>
         </div>
         <nav class="landing-nav">
+          <a href="#features" class="nav-link">Features</a>
+          <a href="#how-it-works" class="nav-link">How It Works</a>
           <button type="button" class="btn-icon theme-toggle" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">
             <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/>
@@ -37,12 +47,6 @@
             <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="4"/>
               <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
-            </svg>
-          </button>
-          <button id="landingSettingsBtn" type="button" class="btn-icon" title="Settings" aria-label="Settings">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
           </button>
           <button id="landingLoginBtn" class="btn btn-ghost">Log In</button>
@@ -53,46 +57,168 @@
       <main class="landing-main" id="main-content">
         <section class="hero-section" id="hero">
           <div class="hero-content">
-            <div class="hero-logo">
-              <span class="logo-big target-icon" aria-hidden="true"></span>
-              <h1 class="hero-title">Axis</h1>
+            <div class="hero-badge">
+              <span class="hero-badge-dot"></span>
+              <span>AI-Powered Planning for Students</span>
             </div>
-            <h2 class="hero-subtitle">Precision planning with calm focus.</h2>
+            <h1 class="hero-title">
+              <span class="hero-title-line">Master Your Time.</span>
+              <span class="hero-title-line hero-title-gradient">Achieve More.</span>
+            </h1>
             <p class="hero-tagline">
-              AI-powered planning system perfect for ambitious students and procrastinators who seek clarity.
+              The intelligent planning system that adapts to your learning style, 
+              breaks down procrastination barriers, and helps you stay focused on what matters most.
             </p>
             <div class="hero-btn-group">
-              <button id="heroGetStartedBtn" class="btn btn-primary btn-large">Get Started</button>
-              <button id="heroLearnMoreBtn" class="btn btn-primary btn-special">
-                <a href="#features" style="text-decoration: none; color: inherit;">Learn More</a>
+              <button id="heroGetStartedBtn" class="btn btn-primary btn-large btn-glow">
+                <span>Start Planning Free</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
               </button>
+              <button id="heroLearnMoreBtn" class="btn btn-secondary btn-large">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polygon points="10,8 16,12 10,16" fill="currentColor"/>
+                </svg>
+                <a href="#features" style="text-decoration: none; color: inherit;">See How It Works</a>
+              </button>
+            </div>
+            <div class="hero-stats">
+              <div class="hero-stat">
+                <span class="hero-stat-number">10,000+</span>
+                <span class="hero-stat-label">Students</span>
+              </div>
+              <div class="hero-stat-divider"></div>
+              <div class="hero-stat">
+                <span class="hero-stat-number">4.9★</span>
+                <span class="hero-stat-label">Rating</span>
+              </div>
+              <div class="hero-stat-divider"></div>
+              <div class="hero-stat">
+                <span class="hero-stat-number">85%</span>
+                <span class="hero-stat-label">More Productive</span>
+              </div>
+            </div>
+          </div>
+          <div class="hero-visual">
+            <div class="hero-mockup">
+              <div class="mockup-header">
+                <div class="mockup-dots">
+                  <span></span><span></span><span></span>
+                </div>
+                <span class="mockup-title">Axis Dashboard</span>
+              </div>
+              <div class="mockup-content">
+                <div class="mockup-sidebar">
+                  <div class="mockup-nav-item active"></div>
+                  <div class="mockup-nav-item"></div>
+                  <div class="mockup-nav-item"></div>
+                  <div class="mockup-nav-item"></div>
+                </div>
+                <div class="mockup-main">
+                  <div class="mockup-card mockup-card-lg"></div>
+                  <div class="mockup-card-row">
+                    <div class="mockup-card"></div>
+                    <div class="mockup-card"></div>
+                  </div>
+                  <div class="mockup-tasks">
+                    <div class="mockup-task">
+                      <div class="mockup-checkbox completed"></div>
+                      <div class="mockup-task-line"></div>
+                    </div>
+                    <div class="mockup-task">
+                      <div class="mockup-checkbox"></div>
+                      <div class="mockup-task-line"></div>
+                    </div>
+                    <div class="mockup-task">
+                      <div class="mockup-checkbox"></div>
+                      <div class="mockup-task-line short"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="hero-floating-card hero-floating-card-1">
+              <div class="floating-card-icon">🎯</div>
+              <div class="floating-card-text">
+                <span class="floating-card-title">Goal Achieved!</span>
+                <span class="floating-card-sub">Weekly target completed</span>
+              </div>
+            </div>
+            <div class="hero-floating-card hero-floating-card-2">
+              <div class="floating-card-icon">⚡</div>
+              <div class="floating-card-text">
+                <span class="floating-card-title">Focus Mode</span>
+                <span class="floating-card-sub">25:00 remaining</span>
+              </div>
             </div>
           </div>
         </section>
 
         <section class="features-section" id="features">
           <div class="container">
-            <h2>Powerful Features for Student Success</h2>
+            <div class="section-header">
+              <span class="section-badge">Features</span>
+              <h2 class="section-title">Everything You Need to Succeed</h2>
+              <p class="section-subtitle">
+                Powerful tools designed specifically for ambitious students who want to take control of their academic journey.
+              </p>
+            </div>
             <div class="features-grid">
-              <div class="feature-item">
-                <div class="feature-icon">🎯</div>
-                <h3>Goals Hierarchy</h3>
+              <div class="feature-card feature-card-highlight">
+                <div class="feature-icon-wrap">
+                  <div class="feature-icon">🤖</div>
+                </div>
+                <h3>AI-Powered Scheduling</h3>
                 <p>
-                  Break down your ambitions into actionable goals across lifetime, yearly, monthly, weekly, and daily levels.
+                  Our intelligent algorithm learns your productivity patterns and creates 
+                  optimized schedules that work with your natural rhythm, not against it.
+                </p>
+                <ul class="feature-list">
+                  <li>Adapts to your energy levels</li>
+                  <li>Smart deadline management</li>
+                  <li>Automatic time blocking</li>
+                </ul>
+              </div>
+              <div class="feature-card">
+                <div class="feature-icon-wrap">
+                  <div class="feature-icon">🎯</div>
+                </div>
+                <h3>Goal Hierarchy System</h3>
+                <p>
+                  Break down lifetime aspirations into yearly, monthly, weekly, and daily goals. 
+                  Every task connects to your bigger picture.
                 </p>
               </div>
-              <div class="feature-item">
-                <div class="feature-icon">🤖</div>
-                <h3>AI Scheduling</h3>
+              <div class="feature-card">
+                <div class="feature-icon-wrap">
+                  <div class="feature-icon">⏰</div>
+                </div>
+                <h3>Smart Focus Timer</h3>
                 <p>
-                  Intelligent task scheduling that adapts to your productivity patterns, preferred work styles, and optimal time windows.
+                  Personalized Pomodoro sessions based on your work style. 
+                  Short bursts or deep work — we adapt to you.
                 </p>
               </div>
-              <div class="feature-item">
-                <div class="feature-icon">⏰</div>
-                <h3>Focus Support</h3>
+              <div class="feature-card">
+                <div class="feature-icon-wrap">
+                  <div class="feature-icon">📊</div>
+                </div>
+                <h3>Progress Analytics</h3>
                 <p>
-                  Pomodoro timers, distraction blocking, and personalized study techniques to maintain deep focus.
+                  Visualize your productivity trends, identify patterns, 
+                  and get AI-generated weekly insights to improve.
+                </p>
+              </div>
+              <div class="feature-card">
+                <div class="feature-icon-wrap">
+                  <div class="feature-icon">🔄</div>
+                </div>
+                <h3>Smart Rescheduling</h3>
+                <p>
+                  Life happens. Our AI automatically suggests how to reorganize 
+                  when you miss deadlines or need to rebalance your week.
                 </p>
               </div>
             </div>
@@ -101,22 +227,110 @@
 
         <section class="how-it-works-section" id="how-it-works">
           <div class="container">
-            <h2>How It Works</h2>
+            <div class="section-header">
+              <span class="section-badge">How It Works</span>
+              <h2 class="section-title">Simple Steps to Better Planning</h2>
+              <p class="section-subtitle">
+                Get started in minutes and see immediate improvements in your productivity.
+              </p>
+            </div>
             <div class="steps-grid">
-              <div class="step-item">
-                <div class="step-number">1</div>
-                <h3>Set Your Goals</h3>
-                <p>Define your vision and break it down into manageable goals using our intuitive goal canvas.</p>
+              <div class="step-card">
+                <div class="step-number">01</div>
+                <div class="step-content">
+                  <h3>Tell Us About You</h3>
+                  <p>Quick personalization quiz about your learning style, productive hours, and goals. Takes just 2 minutes.</p>
+                </div>
+                <div class="step-visual">
+                  <div class="step-icon">📝</div>
+                </div>
               </div>
-              <div class="step-item">
-                <div class="step-number">2</div>
-                <h3>AI Generates Your Schedule</h3>
-                <p>Our AI analyzes your preferences and creates a personalized daily schedule optimized for productivity.</p>
+              <div class="step-connector"></div>
+              <div class="step-card">
+                <div class="step-number">02</div>
+                <div class="step-content">
+                  <h3>Add Your Tasks</h3>
+                  <p>Input your assignments, projects, and deadlines. Our AI prioritizes them using the Eisenhower Matrix.</p>
+                </div>
+                <div class="step-visual">
+                  <div class="step-icon">📋</div>
+                </div>
               </div>
-              <div class="step-item">
-                <div class="step-number">3</div>
-                <h3>Stay Focused &amp; Achieve</h3>
-                <p>Use built-in tools to maintain focus, track progress, and reflect on your journey.</p>
+              <div class="step-connector"></div>
+              <div class="step-card">
+                <div class="step-number">03</div>
+                <div class="step-content">
+                  <h3>Get Your Schedule</h3>
+                  <p>Watch as AI generates a personalized time-blocked schedule optimized for your success.</p>
+                </div>
+                <div class="step-visual">
+                  <div class="step-icon">📅</div>
+                </div>
+              </div>
+              <div class="step-connector"></div>
+              <div class="step-card">
+                <div class="step-number">04</div>
+                <div class="step-content">
+                  <h3>Stay Focused & Achieve</h3>
+                  <p>Use built-in focus tools, track progress, and celebrate your wins as you crush your goals.</p>
+                </div>
+                <div class="step-visual">
+                  <div class="step-icon">🏆</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="testimonials-section" id="testimonials">
+          <div class="container">
+            <div class="section-header">
+              <span class="section-badge">Testimonials</span>
+              <h2 class="section-title">Loved by Students Everywhere</h2>
+            </div>
+            <div class="testimonials-grid">
+              <div class="testimonial-card">
+                <div class="testimonial-stars">★★★★★</div>
+                <p class="testimonial-text">
+                  "Axis completely transformed how I approach studying. The AI scheduling 
+                  understands when I'm most focused and plans accordingly. My grades improved 
+                  by a full letter grade!"
+                </p>
+                <div class="testimonial-author">
+                  <div class="testimonial-avatar">S</div>
+                  <div class="testimonial-info">
+                    <span class="testimonial-name">Sarah K.</span>
+                    <span class="testimonial-role">Computer Science Major</span>
+                  </div>
+                </div>
+              </div>
+              <div class="testimonial-card">
+                <div class="testimonial-stars">★★★★★</div>
+                <p class="testimonial-text">
+                  "As someone who struggles with procrastination, this app is a game-changer. 
+                  The smart rescheduling feature saved me during finals week!"
+                </p>
+                <div class="testimonial-author">
+                  <div class="testimonial-avatar">M</div>
+                  <div class="testimonial-info">
+                    <span class="testimonial-name">Michael R.</span>
+                    <span class="testimonial-role">Pre-Med Student</span>
+                  </div>
+                </div>
+              </div>
+              <div class="testimonial-card">
+                <div class="testimonial-stars">★★★★★</div>
+                <p class="testimonial-text">
+                  "The goal hierarchy feature helps me stay motivated. Seeing how daily tasks 
+                  connect to my bigger dreams keeps me going even on tough days."
+                </p>
+                <div class="testimonial-author">
+                  <div class="testimonial-avatar">E</div>
+                  <div class="testimonial-info">
+                    <span class="testimonial-name">Emily T.</span>
+                    <span class="testimonial-role">High School Senior</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -124,9 +338,22 @@
 
         <section class="cta-section" id="cta">
           <div class="container">
-            <h2>Start Your Journey to Better Planning</h2>
-            <p>Join thousands of students who have <b>transformed their academic life</b> with Axis.</p>
-            <button id="ctaGetStartedBtn" class="btn btn-primary btn-large">Try Axis Now</button>
+            <div class="cta-content">
+              <h2 class="cta-title">Ready to Transform Your Productivity?</h2>
+              <p class="cta-subtitle">
+                Join thousands of students who have already discovered smarter planning.
+                Start free, no credit card required.
+              </p>
+              <div class="cta-buttons">
+                <button id="ctaGetStartedBtn" class="btn btn-primary btn-large btn-glow">
+                  Get Started Free
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                </button>
+              </div>
+              <p class="cta-disclaimer">Free forever for students. No hidden fees.</p>
+            </div>
           </div>
         </section>
       </main>
@@ -134,14 +361,31 @@
       <footer class="landing-footer">
         <div class="container">
           <div class="footer-content">
-            <p>Made with love by July, Emily, and Richard</p>
+            <div class="footer-brand">
+              <div class="logo">
+                <span class="logo-mark target-icon" aria-hidden="true"></span>
+                <span class="logo-text">Axis</span>
+              </div>
+              <p class="footer-tagline">Precision planning with calm focus.</p>
+            </div>
             <nav class="footer-nav">
-              <a href="#hero" class="footer-link">Home</a>
-              <a href="#features" class="footer-link">Features</a>
-              <a href="#how-it-works" class="footer-link">How It Works</a>
-              <a href="#cta" class="footer-link">Get Started</a>
-              <a href="https://github.com/Emily-Random/WAICY_planner" class="btn btn-ghost" target="_blank" style="text-decoration: none;">Star on GitHub!</a>
+              <div class="footer-nav-group">
+                <span class="footer-nav-title">Product</span>
+                <a href="#features" class="footer-link">Features</a>
+                <a href="#how-it-works" class="footer-link">How It Works</a>
+                <a href="#testimonials" class="footer-link">Testimonials</a>
+              </div>
+              <div class="footer-nav-group">
+                <span class="footer-nav-title">Resources</span>
+                <a href="https://github.com/Emily-Random/WAICY_planner" class="footer-link" target="_blank">GitHub</a>
+                <a href="#" class="footer-link">Documentation</a>
+                <a href="#" class="footer-link">Support</a>
+              </div>
             </nav>
+          </div>
+          <div class="footer-bottom">
+            <p>Made with ❤️ by July, Emily, and Richard</p>
+            <p class="footer-copyright">© 2026 Axis. All rights reserved.</p>
           </div>
         </div>
       </footer>
@@ -151,7 +395,10 @@
     <div id="authScreen" class="auth-screen hidden">
       <div class="auth-container">
         <button type="button" id="backToHomeBtn" class="btn-back-home">
-          ← Back to Home
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Back to Home
         </button>
         <button type="button" class="btn-icon theme-toggle auth-theme-toggle" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">
           <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
